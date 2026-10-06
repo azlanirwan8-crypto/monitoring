@@ -105,6 +105,6 @@ bukan laporan setelahnya.
 
 ## Resources
 
-- `scripts/audit-angka.mjs` — baterai 55 pemeriksaan tiga grup (payload, database, rumus).
+- `scripts/audit-angka.mjs` — baterai 59 pemeriksaan tiga grup (payload, database, rumus).
 - `references/identitas-numerik.md` — katalog identitas & mode gagal yang harus diuji.
 - `references/cek-grafik.md` — teknik memverifikasi grafik ECharts dan tata letak di browser.

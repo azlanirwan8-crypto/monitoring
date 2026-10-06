@@ -26,6 +26,12 @@ const HOST = arg('host', '127.0.0.1');
 const ROOT = resolve(arg('root', process.cwd()));
 const MAKS_UKURAN = 400 * 1024 * 1024;
 const EKSTENSI = new Set(['.csv', '.xlsx']);
+// Sumber deret unduhan aplikasi. Default = tab "Jumlah Download" milik user; bisa diganti lewat
+// --sheet-url / env WONDR_SHEET_URL. Halaman tetap offline-first: penarikan hanya terjadi saat
+// tombol ditekan (proses peladen lokal ini), BUKAN saat halaman dirender.
+const NAMA_UNDUHAN = 'Unduhan_PlayStore.csv';
+const SHEET_URL = arg('sheet-url', process.env.WONDR_SHEET_URL
+  || 'https://docs.google.com/spreadsheets/d/1f7xpDZc7Dl5pCSJL535kovpNgys2gC9_nS_MoWwm-MM/gviz/tq?tqx=out:csv&gid=828110846');
 
 async function bacaJson(f) { try { return JSON.parse(await readFile(f, 'utf8')); } catch { return null; } }
 
@@ -59,6 +65,7 @@ function kenali(headerCsv) {
   if (s.has('Nilai Penjualan (Rp)')) return 'transaksi';
   if (s.has('Hari Sejak Login Terakhir')) return 'aktivitas';
   if (s.has('Tipe Merchant') && s.has('Status') && s.has('Kabupaten/Kota')) return 'pendaftaran';
+  if (/download/i.test(headerCsv)) return 'unduhan';
   return null;
 }
 
@@ -95,7 +102,7 @@ async function bangun() {
   };
   await tahap('baca ekspor → DuckDB', [join(ENGINE, 'scripts', 'build-db.mjs'), SUMBER, DB]);
   await tahap('DuckDB → angka siap pakai', [join(ENGINE, 'scripts', 'build-data.mjs'), DB]);
-  const audit = await tahap('pemeriksaan 53 angka', [join(ENGINE, '.qoder', 'skills', 'audit-angka', 'scripts', 'audit-angka.mjs'),
+  const audit = await tahap('pemeriksaan 59 angka', [join(ENGINE, '.qoder', 'skills', 'audit-angka', 'scripts', 'audit-angka.mjs'),
     '--db', DB, '--json', join(ENGINE, 'data', 'dash.json'), '--checks', join(ENGINE, 'data', 'db-checks.json')]);
   const ringkas = /(\d+) pemeriksaan · (\d+) OK · (\d+) WASIS · (\d+) BEDA/.exec(audit.keluaran);
   const hasil = ringkas ? { total: +ringkas[1], ok: +ringkas[2], wasis: +ringkas[3], beda: +ringkas[4] } : null;
@@ -140,8 +147,28 @@ async function simpanBerkas(namaAsli, isi) {
   return { tersimpan: tujuan, jenis, ukuran: isi.length, hash: h.slice(0, 10), peringatan: jenis === 'menunggu' ? 'jenis berkas Excel baru diketahui saat build' : '' };
 }
 
-const kirim = (res, kode, obj) => { res.writeHead(kode, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(JSON.stringify(obj)); };
-const bodyMentah = req => new Promise((res, rej) => {
+/** Ambil deret unduhan dari Google Sheet (server-side), tulis menimpa satu berkas tetap, lalu bangun.
+ *  Sheet = sumber kebenaran seluruh deret, jadi satu berkas ditimpa tiap sinkron (bukan akumulasi
+ *  berkas bertanggal yang membuat satu periode terhitung dua kali). Semua angka tetap lewat
+ *  gerbang audit di bangun() — hasil BEDA tidak ditayangkan. */
+async function tarikSheet() {
+  const t = await fetch(SHEET_URL, {
+    redirect: 'follow', signal: AbortSignal.timeout(25000), headers: { 'user-agent': 'wondr-dashboard-sync/1.0' },
+  });
+  if (!t.ok) throw new Error('Google menolak (HTTP ' + t.status + ') — pastikan sheet dibagi "siapa saja dengan tautan", atau pakai unggah manual.');
+  const teks = await t.text();
+  if (teks.length > MAKS_UKURAN) throw new Error('isi sheet ' + (teks.length / 1048576).toFixed(0) + ' MB, di atas batas ' + (MAKS_UKURAN / 1048576) + ' MB');
+  const baris = teks.replace(/^/, '').split(/\r?\n/).filter(x => x.trim());
+  if (baris.length < 2) throw new Error('sheet kosong atau hanya header — tidak ada baris unduhan.');
+  if (!/download/i.test(baris[0])) throw new Error('baris pertama bukan ekspor unduhan (tidak ada kolom "Download"): ' + baris[0].slice(0, 120));
+  const isi = Buffer.from(baris.join('\r\n') + '\r\n', 'utf8');
+  await mkdir(SUMBER, { recursive: true });
+  await writeFile(join(SUMBER, NAMA_UNDUHAN), isi);
+  const hasil = await bangun();
+  return { ...hasil, berkas: NAMA_UNDUHAN, periode: baris.length - 1 };
+}
+
+const kirim = (res, kode, obj) => { res.writeHead(kode, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(JSON.stringify(obj)); };const bodyMentah = req => new Promise((res, rej) => {
   const bagian = []; let n = 0;
   req.on('data', c => { n += c.length; if (n > MAKS_UKURAN) { rej(new Error('terlalu besar')); req.destroy(); } else bagian.push(c); });
   req.on('end', () => res(Buffer.concat(bagian)));
@@ -175,6 +202,14 @@ createServer(async (req, res) => {
         if (sedangSibuk) return kirim(res, 409, { error: 'masih ada build yang berjalan' });
         sedangSibuk = true;
         try { return kirim(res, 200, { ok: true, ...(await bangun()) }); }
+        finally { sedangSibuk = false; }
+      }
+      if (jalur === '/api/sync-sheet' && req.method === 'POST') {
+        if (!ENGINE) return kirim(res, 503, { error: 'mesin build tidak ditemukan — jalankan peladen dari folder proyek yang ada node_modules-nya' });
+        if (sedangSibuk) return kirim(res, 409, { error: 'masih ada build yang berjalan' });
+        sedangSibuk = true;
+        try { return kirim(res, 200, { ok: true, ...(await tarikSheet()) }); }
+        catch (e) { return kirim(res, 500, { error: String(e?.message || e) }); }
         finally { sedangSibuk = false; }
       }
       return kirim(res, 404, { error: 'endpoint tidak ada' });

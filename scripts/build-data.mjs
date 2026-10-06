@@ -106,7 +106,8 @@ const out = {
   meta: {
     dibuatPada: meta.dibuatPada, snapshot: SNAP, jendelaTransaksiBulan: WIN, db: DB,
     bulanTanpaPendaftaran: bulanBocor,
-    sumber: { folder: meta.sumber, filePendaftaran: meta.file.pendaftaran, fileAktivitas: meta.file.aktivitas, fileTransaksi: meta.file.transaksi, diabaikan: meta.file.diabaikan },
+    sumber: { folder: meta.sumber, filePendaftaran: meta.file.pendaftaran, fileAktivitas: meta.file.aktivitas, fileTransaksi: meta.file.transaksi, fileUnduhan: meta.file.unduhan || [], diabaikan: meta.file.diabaikan },
+    unduhan: meta.unduhan || [],
     catatan: `Ukuran transaksi (nilai, jumlah, rata-rata) dihitung pada jendela tetap ~${WIN} bulan, bukan seumur hidup merchant.`,
     lisensiPeta: 'Batas wilayah: indonesia-38-provinces.geojson, CC BY 4.0 (denyherianto).',
   },
@@ -127,6 +128,7 @@ const out = {
     rataPerTransaksi: gmvTotal / (txnTotal || 1),
     medianGmv: median([...urutGmv].sort((a, b) => a - b)),
     medianUsiaLogin: median(hariLogin),
+    unduhanTerkini: (meta.unduhan && meta.unduhan.length) ? meta.unduhan[meta.unduhan.length - 1] : null,
     konsentrasi: {
       basis: 'persentase nilai transaksi, diurutkan dari merchant terbesar',
       nBasis: urutGmv.length,

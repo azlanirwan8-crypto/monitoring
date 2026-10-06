@@ -25,6 +25,19 @@ Bangkit ulang contoh (hasilnya deterministik, hanya cap waktu yang berubah):
 node scripts/contoh.mjs        # tulis data/dash.json sintetis; ditolak kalau isinya data asli
 ```
 
+## Deploy ke Vercel (tampilan statis)
+
+`vercel.json` sudah disiapkan: tanpa `npm install` (frontend murni tidak butuh dependensi), build
+menjalankan `node scripts/contoh.mjs` untuk menaruh `data/dash.json` contoh, dan seluruh folder akar
+dilayani statis. Connect repositori ini di dasbor Vercel (Root Directory: `.`, Build/Output seperti
+default dari `vercel.json`), atau dari CLI: `npx vercel --prod`.
+
+Yang **berjalan** di Vercel: seluruh grafik, peta, tabel, kartu kuadran, kurva Lorenz, dll. — dengan
+**data contoh** (berlabel `DATA CONTOH`). Yang **tidak** berjalan di sana: tombol "Tambah data" dan
+"Ambil dari Google Sheet", karena itu butuh mesin lokal (DuckDB + folder ekspor Anda). Di Vercel
+kartunya jujur menampilkan "peladen ini tanpa mesin build", bukan error. Data merchant asli tidak
+pernah ke Vercel — `data/dash.json` hasil build ada di `.gitignore`.
+
 ## Pakai data sendiri
 
 1. Taruh hasil ekspor di satu folder, misalnya `C:\dt`.
@@ -50,7 +63,7 @@ beberapa ekspor diselesaikan dengan aturan: ekspor terbaru menang.
 npm run audit
 ```
 
-55 pemeriksaan di tiga kelompok: kontrak numerik payload, hitung ulang lewat SQL ke DuckDB
+59 pemeriksaan di tiga kelompok: kontrak numerik payload, hitung ulang lewat SQL ke DuckDB
 (jalur bebas dari yang dipakai tampilan), dan kebenaran rumus — Gini diuji dengan dua implementasi
 sekaligus dan divalidasi pada data sintetis yang jawabannya diketahui. Keluarannya `OK / WASIS / BEDA`:
 

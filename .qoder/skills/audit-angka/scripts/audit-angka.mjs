@@ -92,6 +92,24 @@ cek('A', 'share merchant terbesar', +K.konsentrasi.merchantTerbesar.share.toFixe
 cek('A', 'sisa merchant = 100% - top10%', +pct(gmvM - jumlah(urut.slice(0, Math.round(urut.length * .1))), gmvM).toFixed(1), +(100 - K.konsentrasi.topSepuluhPersen).toFixed(1), { tol: 0.02 });
 cek('A', 'akuntansi baris: mentah - tanpa MID - MID ganda = faktual', K.terdaftar, (CK.baris?.[0]?.mentah_pendaftaran ?? V.barisPendaftaranMentah) - (V.MIDtanpaIsi ?? 0) - (V.duplikatBedaNilai ?? 0), { wasis: true });
 
+/* Kartu "empat golongan" dihitung di browser dari dua sumbu; bekukan sebagai pemeriksaan supaya
+   predikatnya tidak boleh digeser sampai diam-diam menghasilkan partisi yang bocor. */
+const login30q = r => r[iM.punyaLogin] === 1 && r[iM.loginDays] >= 0 && r[iM.loginDays] <= 30;
+const bayarq = r => r[iM.punyaTxn] === 1 && r[iM.gmv] > 0;
+const qTot = T.m.filter(r => bayarq(r) && login30q(r)).length + T.m.filter(r => bayarq(r) && !login30q(r)).length
+  + T.m.filter(r => !bayarq(r) && login30q(r)).length + T.m.filter(r => !bayarq(r) && !login30q(r)).length;
+cek('A', 'empat golongan merchant menutupi seluruh tabel (partisi, bukan tumpang tindih)', T.m.length, qTot,
+  { note: 'kalau jumlah keempat kotak bukan seluruh merchant, ada baris yang jatuh di dua kotak atau tak masuk sama sekali' });
+cek('A', 'kotak "belum membayar" memang bernilai nol', 0, T.m.filter(r => !bayarq(r) && r[iM.gmv] > 0).length,
+  { note: 'sumbu bayar = punya transaksi & nilai>0; nilai di luar dua kotak "bayar" menandakan label kartu salah' });
+/* Deret unduhan aplikasi: bilangan bulat non-negatif, tanpa periode kembar. Kosong tetap sah
+   (belum ada berkas), makanya diperiksa sebagai 0 pelanggaran, bukan dilewati. */
+const und = D.meta?.unduhan || [];
+cek('A', 'deret unduhan: tiap jumlah bilangan bulat non-negatif', 0, und.filter(x => !Number.isInteger(x.jumlah) || x.jumlah < 0).length,
+  { note: und.length ? `${und.length} periode` : 'belum ada berkas unduhan — kosong itu sah' });
+cek('A', 'deret unduhan tidak punya periode kembar', 0, und.length - new Set(und.map(x => x.periode)).size,
+  { note: 'satu periode terhitung dua kali membuat batang lebih tinggi dari kenyataannya' });
+
 /* ---------------- B · hitung ulang dari database ---------------- */
 if (!flag('tanpa-db')) {
   const { DuckDBInstance } = await import('@duckdb/node-api');

@@ -115,7 +115,13 @@ const payload = {
   meta: {
     dibuatPada: new Date().toISOString(), snapshot: SNAP, jendelaTransaksiBulan: WIN, db: '(contoh sintetis)',
     bulanTanpaPendaftaran: ['2026-06'],
-    sumber: { folder: '(contoh sintetis)', filePendaftaran: ['contoh-pendaftaran.csv'], fileAktivitas: ['contoh-aktivitas.csv'], fileTransaksi: ['contoh-transaksi.csv'], diabaikan: [] },
+    sumber: { folder: '(contoh sintetis)', filePendaftaran: ['contoh-pendaftaran.csv'], fileAktivitas: ['contoh-aktivitas.csv'], fileTransaksi: ['contoh-transaksi.csv'], fileUnduhan: ['contoh-unduhan.csv'], diabaikan: [] },
+    unduhan: [
+      { periode: 'Mei 2026', jumlah: 1120, sumber: 'contoh-unduhan.csv' },
+      { periode: 'Jun 2026', jumlah: 1290, sumber: 'contoh-unduhan.csv' },
+      { periode: 'Jul 2026', jumlah: 1505, sumber: 'contoh-unduhan.csv' },
+      { periode: '18 Aug - 15 Sept', jumlah: 1870, sumber: 'contoh-unduhan.csv' },
+    ],
     catatan: 'CONTOH — seluruh nama merchant, MID, NMID dan MPAN di file ini dikarang. Ukuran transaksi dihitung pada jendela tetap ~' + WIN + ' bulan.',
     lisensiPeta: 'Batas wilayah: indonesia-38-provinces.geojson, CC BY 4.0 (denyherianto).',
   },
@@ -133,6 +139,7 @@ const payload = {
     gmvTotal, gmvPerBulan: gmvTotal / WIN, transaksiTotal: txnTotal, transaksiPerBulan: txnTotal / WIN,
     rataPerTransaksi: gmvTotal / (txnTotal || 1), medianGmv: median(merchant.filter(r => r[iM.punyaTxn] && r[iM.gmv] > 0).map(r => r[iM.gmv])),
     medianUsiaLogin: median(merchant.filter(r => r[iM.loginDays] >= 0).map(r => r[iM.loginDays])),
+    unduhanTerkini: { periode: '18 Aug - 15 Sept', jumlah: 1870, sumber: 'contoh-unduhan.csv' },
     konsentrasi: {
       basis: 'persentase nilai transaksi, diurutkan dari merchant terbesar', nBasis: urut.length,
       top10: pct(urut.slice(0, 10).reduce((a, b) => a + b, 0), gmvTotal),

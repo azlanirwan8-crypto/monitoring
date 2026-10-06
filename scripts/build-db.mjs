@@ -50,6 +50,7 @@ async function kolomXlsx(f) {
 
 const kelas = new Map();
 const headers = {};
+const unduhanFiles = [];
 for (const f of berkas) {
   let h;
   try { h = /\.xlsx$/i.test(f) ? await kolomXlsx(f) : await kolomCsv(f); }
@@ -58,13 +59,15 @@ for (const f of berkas) {
   const jenis = s.has('Nilai Penjualan (Rp)') ? 'transaksi'
     : s.has('Hari Sejak Login Terakhir') ? 'aktivitas'
     : (s.has('Tipe Merchant') && s.has('Status') && s.has('Kabupaten/Kota')) ? 'pendaftaran'
+    : h.some(c => /download/i.test(c)) ? 'unduhan'
     : null;
+  if (jenis === 'unduhan') { unduhanFiles.push(f); headers[f] = h; continue; }
   if (jenis) { kelas.set(f, jenis); headers[f] = h; }
 }
 
 const kelompok = { pendaftaran: [], aktivitas: [], transaksi: [] };
 for (const [f, j] of kelas) kelompok[j].push(f);
-const diabaikan = berkas.filter(f => !kelas.has(f));
+const diabaikan = berkas.filter(f => !kelas.has(f) && !unduhanFiles.includes(f));
 
 if (!kelompok.pendaftaran.length || !kelompok.aktivitas.length || !kelompok.transaksi.length) {
   console.error('Kelompok file tidak lengkap:', JSON.stringify({ kelompok, diabaikan }, null, 1));
@@ -197,10 +200,46 @@ cek.merchant = await baca(`select
 console.log('\n=== PEMERIKSAAN ===');
 console.log(JSON.stringify({ ...cek, mart: cek.mart[0], baris: cek.baris[0] }, null, 1));
 
+/* ---------- deret unduhan aplikasi (opsional, TIDAK digabung ke merchant) ----------
+   Satu angka per periode dari Google Play (Android saja). Tidak ada kunci MID, jadi tidak
+   masuk lapisan fact/mart — disimpan apa adanya sebagai (periode, jumlah) ke meta. Nilai dibaca
+   teks-bebas: ribuan bertanda titik/koma dilucuti dulu. Periode dibiarkan label mentah; rentang
+   tanggal tidak dipaksa jadi angka supaya tidak ada presisi palsu. */
+const deretUnduhan = new Map();
+for (const f of unduhanFiles) {
+  const cols = headers[f] || [];
+  // Periode = kolom bertanggal; jumlah = kolomberisi angka unduhan. Kedua kata bisa muncul di
+  // header yang sama ("Tanggal Download" memuat "download"), jadi jumlah dipilih dari kolom LAIN
+  // supaya tidak salah ambil kolom tanggal sebagai angka.
+  const rePeriode = /tanggal|date|periode|period|bulan|month/i;
+  const reJumlah = /jumlah|download|total|count|unduh/i;
+  const kolomPeriode = cols.find(c => rePeriode.test(c)) || cols[0];
+  const kolomJumlah = cols.find(c => c !== kolomPeriode && reJumlah.test(c)) || cols.find(c => c !== kolomPeriode) || cols[cols.length - 1];
+  if (!kolomPeriode || !kolomJumlah || kolomPeriode === kolomJumlah) continue;
+  const p = `'${(SUMBER + '/' + f).replace(/\\/g, '/')}'`;
+  const src = /\.xlsx$/i.test(f)
+    ? `read_xlsx(${p}, header = true, all_varchar = true)`
+    : `read_csv(${p}, header = true, all_varchar = true)`;
+  const q = x => '"' + String(x).replace(/"/g, '""') + '"';
+  let baris;
+  try { baris = await baca(`select ${q(kolomPeriode)} as periode, ${q(kolomJumlah)} as jumlah from ${src}`); }
+  catch (e) { console.warn(`  unduhan gagal dibaca: ${f} — ${String(e.message).slice(0, 80)}`); continue; }
+  for (const r of baris) {
+    // Jumlah unduhan bilangan bulat: titik & koma keduanya pemisah ribuan (bukan desimal),
+    // jadi dilucuti — "1.870"/"1,870"/"1870" semuanya jadi 1870.
+    const n = Number(String(r.jumlah ?? '').replace(/[^0-9-]/g, ''));
+    const per = String(r.periode ?? '').trim();
+    if (per && isFinite(n)) deretUnduhan.set(per, { periode: per, jumlah: n, sumber: f });
+  }
+}
+const unduhan = [...deretUnduhan.values()];
+if (unduhanFiles.length) console.log(`  deret unduhan  ${unduhan.length} periode dari ${unduhanFiles.join(', ')}`);
+
 const meta = {
   snapshot, sumber: SUMBER, jendelaBulan: cek.jendelaBulan[0]?.rasio ?? null,
   dibuatPada: new Date().toISOString(),
-  file: { pendaftaran: kelompok.pendaftaran, aktivitas: kelompok.aktivitas, transaksi: kelompok.transaksi, diabaikan },
+  unduhan,
+  file: { pendaftaran: kelompok.pendaftaran, aktivitas: kelompok.aktivitas, transaksi: kelompok.transaksi, unduhan: unduhanFiles, diabaikan },
 };
 await mkdir(path.resolve('data'), { recursive: true });
 await writeFile(path.resolve('data/db-meta.json'), JSON.stringify(meta, null, 2));

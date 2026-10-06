@@ -178,8 +178,14 @@ const tinta = c => luma(c) > .34 ? INK : '#fff';
 /* ================= init ================= */
 async function init() {
   const t0 = performance.now();
+  // Hosting statis (mis. Vercel) hanya membawa kode + contoh: kalau data/dash.json hasil build
+  // asli tidak ada, pakai dash.contoh.json supaya halaman tetap tampil, bukan kosong.
+  const ambilJson = async (utama, cadangan) => {
+    try { const r = await fetch(utama); if (r.ok) return await r.json(); } catch { /* jatuh ke contoh */ }
+    return (await fetch(cadangan)).json();
+  };
   const [dash, peta] = await Promise.all([
-    fetch('data/dash.json').then(r => r.json()),
+    ambilJson('data/dash.json', 'data/dash.contoh.json'),
     fetch('data/peta.json').then(r => r.json()),
   ]);
   D = dash;
@@ -473,6 +479,57 @@ function renderWawasan({ R1, M }) {
     `<span class="sw"><i style="background:${PR}"></i>1% teratas = ${pctS(pc(top1Persen, gm))}</span>`,
     terbesar ? `<span class="note-sm">terbesar: <b>${esc(terbesar[i.nama])}</b> MID ${terbesar[i.mid]}</span>` : '',
   ].join('');
+
+  /* --- 2b. empat golongan merchant: dua sumbu yang sama persis dengan kartu di atas ---
+     login30 = punya login & hari_since_login 0..30 (predikat n_login30); bayar = punya transaksi & nilai>0
+     (predikat `txn`). Empat sel ini saling eksklusif dan menutupi seluruh M, jadi jumlahnya selalu = totM. */
+  const login30q = r => r[i.punyaLogin] === 1 && r[i.loginDays] >= 0 && r[i.loginDays] <= 30;
+  const bayarq = r => r[i.punyaTxn] === 1 && r[i.gmv] > 0;
+  const Q = [
+    { c: SU, nama: 'Rajin & membayar', uji: r => bayarq(r) && login30q(r), arti: 'Buka aplikasi ≤30 hari dan punya transaksi — tulang punggung portofolio.' },
+    { c: SW, nama: 'Membayar, tak buka aplikasi', uji: r => bayarq(r) && !login30q(r), arti: 'Terus menerima QRIS tapi tidak login — bisa lepas tanpa terasa.' },
+    { c: PR, nama: 'Rajin login, belum bayar', uji: r => !bayarq(r) && login30q(r), arti: 'Aktif di aplikasi tapi belum ada transaksi — prospek onboarding pembayaran.' },
+    { c: SD, nama: 'Sepi', uji: r => !bayarq(r) && !login30q(r), arti: 'Tidak transaksi dan tidak login akhir-akhir ini — kandidat pemeliharaan.' },
+  ];
+  const hitQ = Q.map(x => { const g = M.filter(x.uji); return { ...x, n: g.length, nilai: g.reduce((a, r) => a + r[i.gmv], 0) }; });
+  el('subKuadran').textContent = `${idnum(totM)} merchant · saringan aktif`;
+  el('hintKuadran').innerHTML = `Dua sumbu: <b>login 30 hari terakhir</b> dan <b>transaksi bernilai</b> — predikat yang sama dengan skor kesehatan dan kurva ketimpangan di atas. Keempat kotak membagi seluruh merchant tanpa tumpang tindih.`;
+  el('kuadranGrid').innerHTML = hitQ.map(x => `<div class="q" style="--qc:${x.c}">
+    <div class="qn">${idnum(x.n)}</div>
+    <div class="qt">${x.nama}</div>
+    <div class="qs">${pctS(pc(x.n, totM))} dari merchant · ${short(x.nilai)} nilai</div>
+    <div class="qm">${x.arti}</div></div>`).join('');
+
+  /* --- 2c. unduhan aplikasi: deret global, TIDAK ikut saringan merchant (tidak ada kunci MID) --- */
+  const und = (D.meta.unduhan || []).filter(x => x && isFinite(x.jumlah));
+  const cU = el('cUnduhan');
+  if (!und.length) {
+    el('subUnduhan').textContent = 'belum ada data';
+    el('hintUnduhan').innerHTML = 'Belum ada berkas unduhan di folder sumber. Tekan <b>Ambil dari Google Sheet</b> di tab Mutu data, atau letakkan ekspor unduhan lalu bangun ulang.';
+    cU.hidden = true;
+  } else {
+    cU.hidden = false;
+    const trk = und[und.length - 1], sblm = und.length > 1 ? und[und.length - 2] : null;
+    const dSel = sblm && sblm.jumlah ? (trk.jumlah - sblm.jumlah) / sblm.jumlah * 100 : null;
+    el('subUnduhan').textContent = `${idnum(trk.jumlah)} unduhan · ${trk.periode}`;
+    el('hintUnduhan').innerHTML = [
+      'Android saja — konsol Apple belum menyediakan ekspor unduhan.',
+      dSel == null ? '' : `periode sebelumnya ${idnum(sblm.jumlah)} → <b style="color:${dSel >= 0 ? SU : SD}">${dSel >= 0 ? '+' : '−'}${pctS(Math.abs(dSel))}</b>`,
+      'Lebar tiap periode bisa berbeda, jadi batang untuk melihat arah, bukan untuk membagi laju harian.',
+    ].filter(Boolean).join(' · ');
+    chart('cUnduhan', {
+      ...ANIM, animationDuration: 700,
+      tooltip: { ...TIP, trigger: 'axis', formatter: p => `<b>${p[0].name}</b><br>${idnum(p[0].value)} unduhan` },
+      grid: { ...GRID, top: 18 },
+      xAxis: { type: 'category', data: und.map(x => x.periode), ...AXIS, splitLine: { show: false }, axisLabel: { ...AXIS.axisLabel, fontSize: 10 } },
+      yAxis: { type: 'value', ...AXIS, axisLabel: { ...AXIS.axisLabel, formatter: v => idnum(v) } },
+      series: [{
+        type: 'bar', barMaxWidth: 46,
+        data: und.map((x, k) => ({ value: x.jumlah, itemStyle: { borderRadius: [3, 3, 0, 0], color: k === und.length - 1 ? PR : SF } })),
+        label: { show: true, position: 'top', fontSize: 10, color: INK3, formatter: p => idnum(p.value) },
+      }],
+    });
+  }
 
   /* --- 3. rekomendasi tindakan --- */
   const winback = M.filter(r => r[i.punyaTxn] && r[i.loginDays] > 180);
@@ -1370,6 +1427,7 @@ async function lihatTambah() {
     TAMBAH.status = r.ok ? await r.json() : null;
   } catch { TAMBAH.status = null; }
   const s = TAMBAH.status;
+  const bs = el('btnSheet'); if (bs) bs.disabled = !(s && s.bisaBangun);
   el('subTambah').textContent = s ? s.jumlah.csv + ' berkas di folder sumber · data per ' + (s.snapshot || '—') : 'peladen ini tanpa mesin build';
   el('hintTambah').textContent = !s
     ? 'Jalankan peladen dari folder proyek (node serve.mjs) supaya tombol ini ikut membangun ulang; tanpa itu berkas hanya bisa ditumpuk manual di folder sumber.'
@@ -1435,6 +1493,30 @@ async function jalankanTambah() {
   setTimeout(() => location.reload(), 700);
 }
 
+async function jalankanSheet() {
+  if (TAMBAH.sibuk) return;
+  TAMBAH.sibuk = true;
+  el('btnSheet').disabled = true; el('btnTambah').disabled = true;
+  setLog('Mengambil ekspor unduhan dari Google Sheet…', 20);
+  let hasil = null, galat = '';
+  try {
+    const r = await fetch('/api/sync-sheet', { method: 'POST', cache: 'no-store' });
+    hasil = await r.json();
+    if (!r.ok || hasil.error) galat = hasil.error || 'kode ' + r.status;
+  } catch { galat = 'peladen tidak menjawab'; }
+  if (galat) {
+    TAMBAH.sibuk = false;
+    setLog('Sheet tidak diambil.', null);
+    el('antreanTambah').insertAdjacentHTML('afterbegin', '<div class="row"><span class="k">' + esc(galat) + '</span><span class="val"><span class="tag warn">gagal</span></span></div>');
+    el('btnTambah').disabled = !TAMBAH.antre.length; el('btnSheet').disabled = false;
+    return;
+  }
+  setLog(hasil.sudahAda ? 'Isi sheet sama dengan yang tersimpan — angka tetap diperiksa ulang…' : 'Berkas unduhan masuk — membangun ulang & memeriksa angka…', 70);
+  sessionStorage.setItem('wondr.hasilBuild', JSON.stringify({ audit: hasil.audit, snapshot: hasil.snapshot, masuk: [{ nama: hasil.berkas, tersimpan: hasil.sudahAda ? null : hasil.berkas }] }));
+  setLog('Selesai — memuat halaman', 100);
+  setTimeout(() => location.reload(), 700);
+}
+
 function tampilkanHasilBuild(h) {
   const a = h.audit || {};
   const masukBaru = (h.masuk || []).filter(x => x.tersimpan).length;
@@ -1460,6 +1542,8 @@ function pasangTambah() {
     if (t === 'drop') tambah(e.dataTransfer.files);
   }));
   btn.addEventListener('click', jalankanTambah);
+  const btnSheet = el('btnSheet');
+  if (btnSheet) btnSheet.addEventListener('click', jalankanSheet);
   lihatTambah();
   const simpan = sessionStorage.getItem('wondr.hasilBuild');
   if (simpan) { sessionStorage.removeItem('wondr.hasilBuild'); try { tampilkanHasilBuild(JSON.parse(simpan)); } catch { } }

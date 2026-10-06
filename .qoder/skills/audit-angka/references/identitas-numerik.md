@@ -47,6 +47,6 @@ Uji **selalu** dengan data sintetis yang diketahui jawabannya, bukan cuma data a
 
 ## Kalimat verdict yang jujur
 
-> "53 pemeriksaan: 50 cocok pada dua jalur bebas, 3 ditandai bukan karena salah hitung melainkan
+> "59 pemeriksaan: 55 cocok pada dua jalur bebas, 4 ditandai bukan karena salah hitung melainkan
 > karena sumbernya sendiri bertentangan / basis populasinya beda, dan itu kini disebut di layar.
 > Yang tidak bisa dihitung dari ekspor ini: tingkat aktivasi, tren harian, dan laju gagal."

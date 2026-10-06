@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": ":",
+  "buildCommand": "node scripts/contoh.mjs",
+  "outputDirectory": ".",
+  "framework": null,
+  "cleanUrls": false,
+  "trailingSlash": false
+}
