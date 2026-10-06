@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="id" data-nav="side">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wondr Merchant — Analisa Aktivitas Merchant</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-nav="side">
+
+<div class="qbar" id="qbar"></div>
+
+<div class="layout">
+
+  <!-- ============ VERSI MENU 1: MENU SAMPING ============ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand-box">
+      <span class="logo">W</span>
+      <div class="brand-txt"><b>Wondr</b><span>Merchant Analytics</span></div>
+    </div>
+
+    <nav class="vmenu" aria-label="Navigasi utama">
+      <div class="vgroup">Analisa</div>
+      <button class="vitem" data-tab="wawasan" aria-current="page">
+        <svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0-3.5 10.9V17h7v-3.1A6 6 0 0 0 12 3Z"/><path d="M9.5 20h5"/></svg>
+        <span class="lbl">Wawasan analis</span><span class="cnt" id="cntWawasan">—</span>
+      </button>
+      <button class="vitem" data-tab="ringkasan">
+        <svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.2"/></svg>
+        <span class="lbl">Ringkasan</span><span class="cnt" id="cntRingkasan">—</span>
+      </button>
+      <button class="vitem" data-tab="wilayah">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.6 2.4 14.4 0 17M12 3.5c-2.4 2.6-2.4 14.4 0 17"/></svg>
+        <span class="lbl">Wilayah &amp; peta</span><span class="cnt" id="cntWilayah">—</span>
+      </button>
+      <button class="vitem" data-tab="aktivitas">
+        <svg viewBox="0 0 24 24"><path d="M3 13h4l2.5-6 3.5 12 2.5-6h5.5"/></svg>
+        <span class="lbl">Aktivitas &amp; retensi</span><span class="cnt" id="cntAktivitas">—</span>
+      </button>
+      <button class="vitem" data-tab="transaksi">
+        <svg viewBox="0 0 24 24"><path d="M4 20V9m5 11V4m5 16v-8m5 8V7"/><path d="M2.5 20h19"/></svg>
+        <span class="lbl">Transaksi</span><span class="cnt" id="cntTransaksi">—</span>
+      </button>
+
+      <div class="vgroup">Tata kelola</div>
+      <button class="vitem" data-tab="mutu">
+        <svg viewBox="0 0 24 24"><path d="M12 3.2 5 6v6.2c0 4.3 3 7 7 8.6 4-1.6 7-4.3 7-8.6V6l-7-2.8Z"/><path d="M9 12.2l2.2 2.2L15.4 10"/></svg>
+        <span class="lbl">Mutu data</span><span class="cnt" id="cntMutu">—</span>
+      </button>
+    </nav>
+
+    <div class="side-foot">
+      Snapshot <b id="snapSide">—</b>
+      <div class="bar"><i id="barLengkap" style="width:0%"></i></div>
+      <div style="margin-top:5px">kelengkapan wilayah <span id="pctLengkap">—</span></div>
+    </div>
+  </aside>
+
+  <div class="content">
+
+    <header class="topbar">
+      <button class="icon-btn hamburger" id="btnCollapse" title="Lipat menu samping" aria-label="Lipat menu samping">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="crumb">Analisa<span class="sep">/</span><b id="crumbNow">Wawasan analis</b></div>
+
+      <div class="search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+        <input id="q" type="search" placeholder="Cari merchant, provinsi, atau kategori…" autocomplete="off" aria-label="Cari merchant">
+        <kbd>/</kbd>
+        <div class="sugg" id="sugg" role="listbox"></div>
+      </div>
+
+      <div class="tb-user" title="Analis data &amp; operasional">
+        <span class="av">AN</span><span class="nm">Analis</span>
+      </div>
+      <button class="icon-btn" id="btnNav" title="Pakai menu atas" aria-label="Ganti bentuk menu">
+        <svg viewBox="0 0 24 24" id="icNav"><rect x="3" y="4" width="5" height="16" rx="1.4"/><rect x="10" y="4" width="11" height="4" rx="1.4"/><rect x="10" y="11" width="11" height="9" rx="1.4"/></svg>
+      </button>
+    </header>
+
+    <!-- ============ VERSI MENU 2: MENU ATAS ============ -->
+    <nav class="topnav" id="topnav" aria-label="Navigasi atas">
+      <button data-tab="wawasan"><svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0-3.5 10.9V17h7v-3.1A6 6 0 0 0 12 3Z"/><path d="M9.5 20h5"/></svg>Wawasan analis</button>
+      <button data-tab="ringkasan"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.2"/></svg>Ringkasan</button>
+      <button data-tab="wilayah"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.6 2.4 14.4 0 17M12 3.5c-2.4 2.6-2.4 14.4 0 17"/></svg>Wilayah</button>
+      <button data-tab="aktivitas"><svg viewBox="0 0 24 24"><path d="M3 13h4l2.5-6 3.5 12 2.5-6h5.5"/></svg>Aktivitas &amp; retensi</button>
+      <button data-tab="transaksi"><svg viewBox="0 0 24 24"><path d="M4 20V9m5 11V4m5 16v-8m5 8V7"/><path d="M2.5 20h19"/></svg>Transaksi</button>
+      <button data-tab="mutu"><svg viewBox="0 0 24 24"><path d="M12 3.2 5 6v6.2c0 4.3 3 7 7 8.6 4-1.6 7-4.3 7-8.6V6l-7-2.8Z"/><path d="M9 12.2l2.2 2.2L15.4 10"/></svg>Mutu data</button>
+      <div class="tb-right"><span class="note-sm" id="navHint">menu versi atas</span></div>
+    </nav>
+
+    <div class="filterbar">
+      <span class="lb">Saringan</span>
+      <label class="field"><span>Bulan daftar</span><select id="fBulan"></select></label>
+      <label class="field"><span>Provinsi</span><select id="fProv"></select></label>
+      <label class="field"><span>Segmen</span><select id="fSeg"></select></label>
+      <label class="field"><span>Tipe</span><select id="fTipe"></select></label>
+      <div id="chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      <div class="tb-right">
+        <span class="snap-pill"><span class="dot-live"></span>data per <b id="snap">—</b> · <span id="ruangLingkup">seluruh data</span><b class="pill-contoh" id="penandaContoh" hidden>DATA CONTOH</b></span>
+        <button class="btn" id="btnReset">Set ulang</button>
+      </div>
+    </div>
+
+    <main>
+
+      <!-- ================= WAWASAN ================= -->
+      <section id="tab-wawasan">
+        <div class="page-head">
+          <h2>Yang ingin diketahui seorang analis</h2>
+          <span class="sub" id="wSub">—</span>
+          <span class="rule"></span>
+        </div>
+
+        <div class="card accent" id="execBand">
+          <div class="hd"><h3>Ringkasan untuk pimpinan</h3><span class="note" id="execTanggal"></span></div>
+          <div class="grid c3" id="execIsi"></div>
+        </div>
+
+        <div class="grid c2e mt stagger">
+          <div class="card accent">
+            <div class="hd"><h3>Skor kesehatan portofolio</h3><span class="note" id="subSkor"></span></div>
+            <p class="hint">Empat komponen, semua dari saringan yang sama dengan kartu metrik di halaman lain.</p>
+            <div class="score-wrap">
+              <div class="score-ring">
+                <div id="cSkor" style="width:132px;height:132px"></div>
+                <div class="big"><b id="skorNilai">0</b><span>/ 100</span></div>
+              </div>
+              <div class="meters" id="mSkor"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="hd"><h3>Siapa menahan seluruh angka</h3><span class="note">kurva ketimpangan (Lorenz)</span></div>
+            <p class="hint" id="hintLorenz"></p>
+            <div id="cLorenz" class="chart sm"></div>
+            <div class="map-foot" id="kakiLorenz"></div>
+          </div>
+        </div>
+
+        <div class="card mt">
+          <div class="hd"><h3>Rekomendasi tindakan</h3><span class="note">urutan menurut besarnya rupiah yang dipertaruhkan</span></div>
+          <p class="hint" id="hintAct"></p>
+          <div class="act" id="actList"></div>
+        </div>
+
+        <div class="grid c2e mt stagger">
+          <div class="card">
+            <div class="hd"><h3>Celah aktivasi antar bulan daftar</h3><div class="seg right" id="segCelah"></div></div>
+            <p class="hint" id="hintCelah"></p>
+            <div id="cCelah" class="chart"></div>
+          </div>
+          <div class="card">
+            <div class="hd"><h3>Jangkauan vs kontribusi nilai</h3></div>
+            <p class="hint">Diagonal = provinsi yang porsinya sama di jumlah merchant dan di rupiah. Kanan-bawah = sedikit merchant, banyak nilai.</p>
+            <div id="cQuad" class="chart"></div>
+          </div>
+        </div>
+
+        <div class="grid c2e mt stagger">
+          <div class="card">
+            <div class="hd"><h3>Kolam panggilan kembali</h3><span class="note" id="subWin"></span></div>
+            <p class="hint">Grafik: lama tidak login, yang baru setahun lebih murah dipanggil daripada yang sudah bertahun-tahun. Tabel: 12 merchant terbesar yang masih bisa ditarik kembali, diurut menurut nilainya per bulan.</p>
+            <div id="cWinback" class="chart sm"></div>
+            <div class="tablewrap"><table id="tWin"></table></div>
+          </div>
+          <div class="card">
+            <div class="hd"><h3>Label segmen vs omzet nyata</h3><span class="note">ambang usaha mikro: Rp 2 miliar / tahun</span></div>
+            <p class="hint">Merchant berlabel mikro yang nilai transaksinya sudah di atas ambang — kesalahan segmentasi berarti program yang salah sasaran.</p>
+            <div class="tablewrap"><table id="tMismatch"></table></div>
+            <div class="map-foot" id="kakiMismatch"></div>
+          </div>
+        </div>
+
+        <div class="grid c2e mt stagger">
+          <div class="card">
+            <div class="hd"><h3>Tenaga penjual vs isi kantong</h3><span class="note" id="subBd"></span></div>
+            <p class="hint">Provinsi dengan banyak merchant yang belum bertransaksi tetapi nilai per merchant-nya tinggi = prioritas akuisisi.</p>
+            <div id="cBd" class="chart sm"></div>
+          </div>
+          <div class="card">
+            <div class="hd"><h3>Hal yang harus disebut di setiap rapat</h3></div>
+            <div class="rows" id="wCalls"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= RINGKASAN ================= -->
+      <section id="tab-ringkasan" hidden>
+        <div class="page-head">
+          <h2>Cakupan &amp; alur</h2><span class="sub" id="scopeNote"></span><span class="rule"></span>
+        </div>
+        <div class="kpis stagger" id="kpis"></div>
+
+        <div class="grid c2 stagger">
+          <div class="card">
+            <div class="hd"><h3>Gelombang pendaftaran per bulan</h3><span class="note" id="subCohort"></span></div>
+            <p class="hint">Bilah abu-abu = bulan yang tidak ikut terekspor, bukan nol pendaftaran.</p>
+            <div id="cCohort" class="chart"></div>
+          </div>
+          <div class="card">
+            <div class="hd"><h3>Yang sama di file pendaftaran &amp; aktivitas</h3></div>
+            <p class="hint" id="hintFunnel">Angka di bawah hanya menghitung merchant yang ada di kedua file, bukan tingkat aktivasi.</p>
+            <div id="cFunnel" class="chart"></div>
+          </div>
+        </div>
+
+        <div class="grid c2e mt stagger">
+          <div class="card">
+            <div class="hd"><h3>Status merchant</h3><span class="note" id="subStatus"></span></div>
+            <div id="cStatus" class="chart sm"></div>
+          </div>
+          <div class="card">
+            <div class="hd"><h3>Keluarga kategori usaha</h3><span class="note">10 teratas</span></div>
+            <div id="cKeluarga" class="chart sm"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= WILAYAH ================= -->
+      <section id="tab-wilayah" hidden>
+        <div class="page-head">
+          <h2>Sebaran wilayah</h2><span class="sub" id="scopeWil"></span><span class="rule"></span>
+        </div>
+
+        <div class="card">
+          <div class="hd">
+            <h3>Peta provinsi</h3>
+            <div class="strip" style="margin:0">
+              <div class="seg" id="segPeta"></div>
+              <div class="seg" id="segPetaMode"></div>
+              <div class="seg" id="segPetaLabel"></div>
+            </div>
+          </div>
+          <p class="hint" id="hintPeta"></p>
+          <div class="map-wrap">
+            <div id="cMap" class="chart map"></div>
+            <div class="map-ctl">
+              <button id="zIn" title="Perbesar">+</button>
+              <button id="zOut" title="Perkecil">−</button>
+              <button id="zReset" title="Pasang kembali"><svg viewBox="0 0 24 24"><path d="M4 9V5h4M20 15v4h-4M20 9V5h-4M4 15v4h4"/></svg></button>
+            </div>
+          </div>
+          <div class="map-foot" id="footPeta"></div>
+        </div>
+
+        <div class="grid c2 mt stagger">
+          <div class="card">
+            <div class="hd"><h3>Peringkat provinsi</h3><span class="note" id="subRank"></span></div>
+            <p class="hint">Bar = bagian terhadap total wilayah terpilih; kolom terakhir selisih pendaftar bulan ini vs bulan sebelumnya.</p>
+            <div class="tablewrap" style="max-height:540px"><table id="tProv"></table></div>
+          </div>
+          <div class="card">
+            <div class="hd"><h3>Bagian merchant vs bagian nilai</h3></div>
+            <p class="hint">Wilayah banyak terdaftar belum tentu wilayah banyak bertransaksi.</p>
+            <div id="cDiverge" class="chart tall"></div>
+          </div>
+        </div>
+
+        <div class="grid c2e mt stagger">
+          <div class="card">
+            <div class="hd"><h3>Kabupaten / kota teratas</h3><div class="seg" id="segKab"></div></div>
+            <p class="hint">20 kabupaten menurut metrik yang dipilih di kanan — urutan kabupaten tidak selalu sama dengan urutan provinsinya.</p>
+            <div id="cKab" class="chart"></div>
+          </div>
+          <div class="card">
+            <div class="hd"><h3>Kedatangan merchant: provinsi × bulan</h3></div>
+            <p class="hint">Satu sel = merchant yang terdaftar di provinsi itu pada bulan tersebut. Warna tua = lebih ramai; sel putih = nol pendaftaran.</p>
+            <div id="cHeat" class="chart"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= AKTIVITAS ================= -->
+      <section id="tab-aktivitas" hidden>
+        <div class="page-head">
+          <h2>Aktivitas merchant</h2><span class="sub" id="scopeAktiv"></span><span class="rule"></span>
+        </div>
+        <div class="kpis stagger" id="kpisAktiv"></div>
+
+        <div class="grid c2 stagger">
+          <div class="card">
+            <div class="hd"><h3>Usia login terakhir</h3><div class="seg" id="segRecency"></div></div>
+            <p class="hint" id="hintRecency"></p>
+            <div id="cRecency" class="chart"></div>
+          </div>
+          <div class="card">
+            <div class="hd"><h3>Merchant yang login per bulan</h3></div>
+            <p class="hint">Satu-satunya deret waktu aktivitas yang benar-benar tersedia pada ekspor ini.</p>
+            <div id="cLoginMon" class="chart"></div>
+          </div>
+        </div>
+
+        <div class="grid c2 mt stagger">
+          <div class="card">
+            <div class="hd"><h3>Kurva retensi per bulan daftar</h3><div class="seg" id="segKurve"></div></div>
+            <p class="hint">Persentase merchant yang masih login pada tiap usia. Penyebutnya hanya merchant yang terdeteksi di file aktivitas, jadi angka ini batas atas.</p>
+            <div id="cRetensiKurve" class="chart"></div>
+          </div>
+          <div class="card">
+            <div class="hd"><h3>Matriks bulan daftar × usia login</h3></div>
+            <p class="hint">Tiap baris satu bulan pendaftaran, tiap kolom sudah berapa lama merchant itu tidak login. Angka dalam sel = jumlah merchant; persennya muncul saat kursor diarahkan.</p>
+            <div id="cRetention" class="chart"></div>
+          </div>
+        </div>
+
+        <div class="grid c2e mt stagger">
+          <div class="card">
+            <div class="hd"><h3>Usia login per segmen UMKM</h3></div>
+            <p class="hint">Setiap tumpukan satu segmen, potongannya kelompok usia login. Warna muda = baru saja masuk, makin gelap makin lama tidak masuk.</p>
+            <div id="cSegRec" class="chart"></div>
+          </div>
+          <div class="card">
+            <div class="hd"><h3>Pola jam pendaftaran</h3><div class="seg" id="segJam"></div></div>
+            <p class="hint" id="hintJam"></p>
+            <div id="cJam" class="chart"></div>
+          </div>
+        </div>
+
+        <div class="grid c2e mt stagger">
+          <div class="card">
+            <div class="hd"><h3>Tipe merchant: mandiri vs submerchant</h3><span class="note" id="subTipe"></span></div>
+            <p class="hint">Kolom "Tipe Merchant" hanya ada di file pendaftaran dan aktivitas. Submerchant berarti berada di bawah satu induk, jadi angka per merchant-nya tidak sebanding dengan merchant mandiri.</p>
+            <div id="cTipe" class="chart sm"></div>
+          </div>
+          <div class="card">
+            <div class="hd"><h3>Jumlah user aktif per merchant</h3><span class="note" id="subUser"></span></div>
+            <p class="hint">Yang punya lebih dari satu user biasanya jaringan atau beberapa cabang dengan satu akun — kelompok ini layak diperlakukan berbeda.</p>
+            <div id="cUser" class="chart sm"></div>
+          </div>
+        </div>
+
+        <div class="grid c2e mt stagger">
+          <div class="card">
+            <div class="hd"><h3>Umur merchant saat ditutup</h3><span class="note" id="subChurn"></span></div>
+            <div id="cChurn" class="chart sm"></div>
+          </div>
+          <div class="card">
+            <div class="hd"><h3>Merchant berdasar bulan transaksi terakhir</h3><span class="note" id="subTxnMon"></span></div>
+            <div id="cTxnMon" class="chart sm"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= TRANSAKSI ================= -->
+      <section id="tab-transaksi" hidden>
+        <div class="page-head">
+          <h2>Nilai transaksi</h2><span class="sub" id="scopeTxn"></span><span class="rule"></span>
+        </div>
+        <div class="kpis stagger" id="kpisTxn"></div>
+
+        <div class="card">
+          <div class="hd"><h3>Konsentrasi nilai transaksi</h3><div class="seg" id="segPareto"></div></div>
+          <p class="hint" id="hintPareto"></p>
+          <div id="cPareto" class="chart"></div>
+        </div>
+
+        <div class="grid c2 mt stagger">
+          <div class="card">
+            <div class="hd"><h3>Frekuensi vs nilai per transaksi</h3><span class="note">sumbu log</span></div>
+            <p class="hint">Kanan-bawah = sering tapi kecil. Kiri-atas = jarang tapi besar.</p>
+            <div id="cScatter" class="chart"></div>
+          </div>
+          <div class="card">
+            <div class="hd"><h3>Sebaran nilai per segmen</h3><span class="note">kotak = 50% tengah, garis = nilai tengah</span></div>
+            <div id="cBox" class="chart"></div>
+          </div>
+        </div>
+
+        <div class="card mt">
+          <div class="hd"><h3>Nilai transaksi vs jumlah merchant per kategori</h3></div>
+          <p class="hint">Bilah = rupiah, titik = banyaknya merchant. Keluarga kategori dengan bilah panjang tetapi titik kecil artinya sedikit merchant yang memutar banyak uang.</p>
+          <div id="cKatValue" class="chart"></div>
+        </div>
+
+        <div class="card mt">
+          <div class="hd"><h3>Kartu identitas merchant</h3><span class="note" id="subDossier"></span></div>
+          <p class="hint">Semua kolom yang ada di file sumber, apa adanya. Cari nama merchant di kotak kanan atas lalu pilih untuk membuka kartunya.</p>
+          <div class="rows" id="dDossier"></div>
+        </div>
+
+        <div class="card mt">
+          <div class="hd"><h3>Daftar merchant</h3><span class="note" id="subTop"></span><div class="seg right" id="segDaftar"></div><button class="btn" id="btnCsv" type="button" title="Semua baris pada saringan ini, bukan hanya yang tampil">Unduh CSV</button></div>
+          <p class="hint">Klik judul kolom untuk mengurut, klik baris untuk membuka kartu identitasnya. Toggle di kanan hanya mengganti isi tabel; kartu metrik dan grafik di atasnya tetap memakai merchant bertransaksi.</p>
+          <div class="tablewrap" style="max-height:460px"><table id="tTop" class="fixed"></table></div>
+        </div>
+      </section>
+
+      <!-- ================= MUTU DATA ================= -->
+      <section id="tab-mutu" hidden>
+        <div class="page-head">
+          <h2>Mutu &amp; asal data</h2><span class="sub">semua pemeriksaan dijalankan saat build, bukan diketik manual</span><span class="rule"></span>
+        </div>
+
+        <div class="card">
+          <div class="hd"><h3>Tambah data</h3><span class="note" id="subTambah"></span></div>
+          <p class="hint" id="hintTambah">Menunggu keterangan peladen…</p>
+          <div class="drop" id="drop" tabindex="0" role="button" aria-label="Letakkan berkas ekspor atau klik untuk memilih">
+            <b>Letakkan berkas .csv / .xlsx hasil ekspor di sini</b>
+            <span>atau klik untuk memilih — jenis ekspor dikenali dari isi baris pertama, bukan dari nama file</span>
+          </div>
+          <input type="file" id="fileTambah" accept=".csv,.xlsx" multiple hidden>
+          <div class="progres" id="progTambah" hidden><i></i></div>
+          <div class="rows" id="antreanTambah"></div>
+          <div class="strip">
+            <button class="btn primary" id="btnTambah" type="button" disabled>Unggah &amp; bangun ulang</button>
+            <span class="hint" id="logTambah"></span>
+          </div>
+        </div>
+
+        <div class="grid c2e mt stagger">
+          <div class="card">
+            <div class="hd"><h3>Yang perlu diketahui sebelum angka dipakai</h3></div>
+            <div id="mIssues" class="rows"></div>
+          </div>
+          <div class="card">
+            <div class="hd"><h3>Pemeriksaan yang dijalankan pada build</h3></div>
+            <div class="tablewrap"><table id="mChecks"></table></div>
+          </div>
+        </div>
+        <div class="grid c2e mt stagger">
+          <div class="card">
+            <div class="hd"><h3>Nasib setiap baris sumber</h3><span class="note" id="subNasib"></span></div>
+            <p class="hint">Dijelaskan satu per satu: berapa baris dibaca, berapa yang dipakai, dan mengapa sisanya tidak bisa dipakai.</p>
+            <div class="tablewrap"><table id="mNasib"></table></div>
+          </div>
+          <div class="card">
+            <div class="hd"><h3>Sumber &amp; cara bangun ulang</h3></div>
+            <div id="mSource" class="rows"></div>
+          </div>
+        </div>
+
+        <div class="card mt">
+          <div class="hd"><h3>Kelengkapan kolom sumber</h3><span class="note" id="subKelengkapan"></span></div>
+          <p class="hint">Setiap kolom yang ada di file ekspor, seberapa penuh isinya, dan di panel mana kolom itu dipakai. Kolom tanpa pemakaian akan tetap terlihat di sini, tidak disembunyikan.</p>
+          <div class="tablewrap" style="max-height:420px"><table id="mKelengkapan" class="fixed"></table></div>
+        </div>
+
+        <div class="grid c2e mt stagger">
+          <div class="card">
+            <div class="hd"><h3>Batas analisis</h3></div>
+            <div id="mLimits" class="rows"></div>
+          </div>
+          <div class="card">
+            <div class="hd"><h3>Arti istilah di halaman ini</h3></div>
+            <div id="mGlosarium" class="rows"></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer><span id="foot"></span></footer>
+  </div>
+</div>
+
+<script src="vendor/echarts.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

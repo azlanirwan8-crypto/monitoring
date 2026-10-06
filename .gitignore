@@ -1,0 +1,12 @@
+node_modules/
+
+# hasil build dari ekspor asli — JANGAN ikut tersebar
+data/dash.json
+data/db-meta.json
+data/db-checks.json
+data/dash.json.sebelum
+data/db-meta.json.sebelum
+data/db-checks.json.sebelum
+
+# salinan deploy (dibuat oleh npm run deploy)
+deploy/
