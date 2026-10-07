@@ -1488,18 +1488,26 @@ const TAMBAH = { status: null, antre: [], sibuk: false };
 const ukuranBerkas = b => b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
 
 async function lihatTambah() {
-  try {
-    const r = await fetch('/api/status', { cache: 'no-store' });
-    TAMBAH.status = r.ok ? await r.json() : null;
-  } catch { TAMBAH.status = null; }
+  /* Hosting statis (Vercel) tidak punya peladennya — probe hanya memicu 404 di konsol,
+     jadi status hanya ditanyakan ketika halaman disajikan dari peladen lokal. */
+  const lokal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  TAMBAH.status = null;
+  if (lokal) {
+    try {
+      const r = await fetch('/api/status', { cache: 'no-store' });
+      TAMBAH.status = r.ok ? await r.json() : null;
+    } catch { TAMBAH.status = null; }
+  }
   const s = TAMBAH.status;
   const bs = el('btnSheet'); if (bs) bs.disabled = !(s && s.bisaBangun);
-  el('subTambah').textContent = s ? s.jumlah.csv + ' berkas di folder sumber · data per ' + (s.snapshot || '—') : 'peladen ini tanpa mesin build';
-  el('hintTambah').textContent = !s
-    ? 'Jalankan peladen dari folder proyek (node serve.mjs) supaya tombol ini ikut membangun ulang; tanpa itu berkas hanya bisa ditumpuk manual di folder sumber.'
-    : s.bisaBangun
-      ? 'Berkas masuk ke ' + s.sumber + ', lalu seluruh angka dibangun ulang dan diperiksa. Kalau pemeriksaan menolak, angka lama tetap tayang.'
-      : 'Folder sumber ' + s.sumber + ' terbuka, tapi mesin build tidak ditemukan dari folder ini.';
+  el('subTambah').textContent = s ? s.jumlah.csv + ' berkas di folder sumber · data per ' + (s.snapshot || '—') : 'tanpa peladen lokal';
+  el('hintTambah').textContent = !lokal
+    ? 'Halaman ini disajikan dari hosting statis, jadi tombol di bawah hanya menampilkan data yang sudah dibangun. Tambah data dilakukan lewat peladen lokal: node serve.mjs dari folder proyek.'
+    : !s
+      ? 'Jalankan peladen dari folder proyek (node serve.mjs) supaya tombol ini ikut membangun ulang; tanpa itu berkas hanya bisa ditumpuk manual di folder sumber.'
+      : s.bisaBangun
+        ? 'Berkas masuk ke ' + s.sumber + ', lalu seluruh angka dibangun ulang dan diperiksa. Kalau pemeriksaan menolak, angka lama tetap tayang.'
+        : 'Folder sumber ' + s.sumber + ' terbuka, tapi mesin build tidak ditemukan dari folder ini.';
 }
 
 function gambarAntrean() {
