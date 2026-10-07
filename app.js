@@ -2,7 +2,7 @@
    dan angka turunan selalu dihitung dari set baris yang sama dengan widget di sebelahnya. */
 
 const S = {
-  tab: 'wawasan', bulan: '*', prov: '*', seg: '*', tipe: '*', cari: '',
+  tab: 'eksekutif', bulan: '*', prov: '*', seg: '*', tipe: '*', cari: '',
   peta: 'n', petaMode: 'choro', petaLabel: 'no', petaZoom: 1,
   kab: 'n', rec: 30, pareto: '200', jam: '2026', kurve: 'survival', celah: '30', daftar: 'txn',
   sort: { key: 15, dir: -1 }, midPilih: '', nav: 'side', lipat: 0,
@@ -201,11 +201,11 @@ async function init() {
   el('snap').textContent = D.meta.snapshot;
   el('snapSide').textContent = D.meta.snapshot;
   el('penandaContoh').hidden = !/CONTOH/.test(String(D.meta.catatan || ''));
-  // Badge asal data jadi pintasan ke tab Mutu data (riwayat + panel audit), dengan tooltip kapan terakhir sinkron.
+  // Badge asal data jadi pintasan ke tab Mutu data (riwayat + panel audit), dengan kapan angka dibangun.
   const pill = el('pillSumber');
   if (pill) {
     const sinkron = D.meta.dibuatPada ? new Date(D.meta.dibuatPada).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : 'tidak diketahui';
-    pill.title = `Sinkron terakhir: ${sinkron} · klik untuk melihat asal & riwayat data`;
+    pill.title = `Angka terakhir dibangun: ${sinkron} · klik untuk melihat asal & riwayat data`;
     const ke = () => pindahTab('mutu');
     pill.addEventListener('click', ke);
     pill.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ke(); } });
@@ -228,11 +228,9 @@ async function init() {
 function hitungBadge() {
   const K = D.kpi;
   const provIso = Object.keys(D.provGeo).length;
-  el('cntWawasan').textContent = '6';
-  el('cntRingkasan').textContent = short(K.terdaftar);
-  el('cntWilayah').textContent = provIso + ' prov';
+  el('cntEksekutif').textContent = short(K.terdaftar);
   el('cntAktivitas').textContent = short(K.merchantBeraktivitas);
-  el('cntTransaksi').textContent = short(K.punyaTransaksi);
+  el('cntWilayah').textContent = provIso + ' prov';
   el('cntMutu').textContent = String(D.issues.length + 1);
   const pct = pc(provIso, D.dims.provinsi.filter(p => p !== '(tidak ada)').length);
   el('pctLengkap').textContent = pctS(pct, 0);
@@ -251,12 +249,22 @@ function pasangKerangka() {
   el('navHint').textContent = S.nav === 'side' ? '' : 'menu versi atas';
 }
 
+/* Satu menu = satu atau lebih bagian. Isinya tidak berubah, hanya pengemasannya:
+   bagian wawasan ikut tab eksekutif, bagian transaksi ikut tab wilayah. */
+const GRUP = {
+  eksekutif: ['ringkasan', 'wawasan'],
+  aktivitas: ['aktivitas'],
+  wilayah: ['wilayah', 'transaksi'],
+  mutu: ['mutu'],
+};
+
 function pindahTab(tab) {
   if (S.tab === tab) return;
   S.tab = tab;
+  const bagian = GRUP[tab];
   $$('.vitem').forEach(b => b.dataset.tab === tab ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
   $$('#topnav button').forEach(b => b.dataset.tab === tab ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
-  $$('main section').forEach(s => { s.hidden = s.id !== 'tab-' + tab; });
+  $$('main section').forEach(s => { s.hidden = !bagian.includes(s.id.replace('tab-', '')); });
   el('crumbNow').textContent = (el('topnav').querySelector(`[data-tab="${tab}"]`)?.textContent || tab).trim();
   render();
 }
@@ -376,7 +384,8 @@ function render() {
   ANTRE.length = 0;
   chipsFilter();
   const d = { R1: rowsR1(), R2: rowsR2(), R3: rowsR3(), R4: rowsR4(), M: rowsM() };
-  ({ wawasan: renderWawasan, ringkasan: renderRingkasan, wilayah: renderWilayah, aktivitas: renderAktivitas, transaksi: renderTransaksi, mutu: renderMutu })[S.tab](d);
+  const FUN = { ringkasan: renderRingkasan, wawasan: renderWawasan, wilayah: renderWilayah, aktivitas: renderAktivitas, transaksi: renderTransaksi, mutu: renderMutu };
+  for (const b of GRUP[S.tab]) FUN[b](d);
   const ms = ((el('ms') || {}).textContent = (performance.now() - t0).toFixed(0));
   return ms;
 }
@@ -545,7 +554,7 @@ function renderWawasan({ R1, M }) {
   const nilaiWinback = winback.reduce((a, r) => a + r[i.gmv], 0) / W;
   const belumBayar = login.filter(r => r[i.loginDays] <= 30 && !r[i.punyaTxn]);
   const salahLabel = M.filter(r => D.dims.segmen[r[i.seg]] === 'Usaha Mikro' && r[i.gmv] > AMBANG_MIKRO_TAHUN * W / 12);
-  /* Celah kohort diambil dari agregat pendaftaran — sama seperti kartu di tab Ringkasan,
+  /* Celah kohort diambil dari agregat pendaftaran — sama seperti kartu di tab Ringkasan eksekutif,
      karena tabel merchant hanya memuat yang punya jejak aktivitas (kohort 2026 masih tipis). */
   const perKohortReg = kelompok(R1, j.bulan, [j.n, j.nLogin30, j.nTxn]);
   const deret = mon2026.map(mo => {
@@ -580,7 +589,7 @@ function renderWawasan({ R1, M }) {
   const sah = deret.map(x => x[pilihKolom]).filter(x => x != null);
   const garis = med(sah);
   el('hintCelah').innerHTML = sah.length
-    ? `nilai tengah ${pilihKolom === 'ak' ? 'aktivasi 30 hari' : 'konversi transaksi'} = <b>${pctS(garis)}</b> · kelompok pendaftar di bawah garis butuh perhatian · penyebutnya ringkasan pendaftaran, sama seperti kartu di tab Ringkasan`
+    ? `nilai tengah ${pilihKolom === 'ak' ? 'aktivasi 30 hari' : 'konversi transaksi'} = <b>${pctS(garis)}</b> · kelompok pendaftar di bawah garis butuh perhatian · penyebutnya ringkasan pendaftaran, sama seperti kartu di tab Ringkasan eksekutif`
     : `tidak ada bulan daftar yang punya data ${pilihKolom === 'ak' ? 'login ≤30 hari' : 'transaksi'} pada saringan ini`;
   chart('cCelah', {
     tooltip: { ...TIP, trigger: 'axis', formatter: p => `<b>${p[0].axisValue}</b><br>${p[0].value == null ? 'bulan itu tidak terekspor' : pctS(p[0].value) + ' · ' + idnum(deret[p[0].dataIndex].n) + ' merchant'}` },
@@ -681,66 +690,47 @@ function renderWawasan({ R1, M }) {
     { k: 'warn', t: `MPAN rusak di sumber: ${idnum(V.mpanNotasiIlmiah || 0)} baris tersimpan sebagai notasi ilmiah. Semua penggabungan memakai MID, dan ${idnum(V.MIDberulang)} baris MID berulang diselesaikan dengan aturan ekspor terbaru menang — ${idnum(V.duplikatBedaNilai || 0)} di antaranya membawa atribut yang berbeda.` },
     { k: 'info', t: `${idnum(V.userAktifSatu || 0)} merchant melaporkan 1 user aktif, sehingga “jumlah user” tidak berguna sebagai ukuran keterlibatan.` },
   ].map(x => `<div class="row" style="grid-template-columns:auto"><span class="k"><span class="callout ${x.k}" style="border:0;background:none;padding:0"><svg viewBox="0 0 24 24"><path d="M12 8v5m0 3.2v.1M10.3 3.9 2.8 17.4A1.9 1.9 0 0 0 4.5 20.3h15a1.9 1.9 0 0 0 1.7-2.9L13.7 3.9a1.9 1.9 0 0 0-3.4 0Z"/></svg><span>${x.t}</span></span></span></div>`).join('');
-
-  /* --- 8. distribusi status NYATA --- kolom tahap/approver tidak ada di sumber, jadi ini bukan
-     funnel "Draft→Approver→Rejected", melainkan komposisi 4 status akhir yang benar-benar terisi. */
-  const WARNA_STATUS = { 'Aktif': SU, 'Tidak Aktif': SW, 'Ditutup': INK3, 'Diblokir': SD };
-  const byStatus = [...kelompok(M, i.status, [null]).entries()].sort((a, b) => b[1][0] - a[1][0]);
-  const totS = M.length;
-  chart('cStatus', {
-    ...ANIM, animationDuration: 800,
-    tooltip: { ...TIP, formatter: p => `<b>${p.name}</b><br>${idnum(p.value)} merchant · ${pctS(pc(p.value, totS))}` },
-    legend: { ...LEG, orient: 'vertical', left: 4, top: 'center', itemGap: 8 },
-    series: [{
-      type: 'pie', radius: ['50%', '74%'], center: ['70%', '52%'], avoidLabelOverlap: true, label: { show: false }, labelLine: { show: false },
-      itemStyle: { borderColor: '#fff', borderWidth: 2 },
-      data: byStatus.map(([k, o]) => ({ name: D.dims.status[k], value: o[0], itemStyle: { color: WARNA_STATUS[D.dims.status[k]] || PR } })),
-    }],
-  });
-  el('subStatus').textContent = `${idnum(M.length)} merchant · saringan aktif`;
-  el('hintStatus').innerHTML = 'Empat status akhir dari file sumber. Alur <b>Draft → Approver 1 → Approver 2 → Rejected</b> sengaja tidak dibuat — kolom tahap/penahap tidak ada di ekspor (lihat Mutu data · Kelengkapan kolom).';
-
-  /* --- 9. Merchant perlu perhatian: pernah membayar, tapi login-nya sudah lama. Urut rupiah. */
-  const poolPrh = M.filter(r => r[i.punyaTxn] && r[i.gmv] > 0 && r[i.loginDays] > 60);
-  const perhatian = poolPrh.slice().sort((a, b) => (b[i.gmv] / W) - (a[i.gmv] / W)).slice(0, 12);
-  el('subPerhatian').textContent = `${idnum(perhatian.length)} dari ${idnum(poolPrh.length)} merchant`;
-  el('hintPerhatian').innerHTML = 'Diuurut dari rupiah per bulan terbesar: merchant yang <b>pernah membayar</b> tapi login-nya sudah <b>lewat 60 hari</b>. Ini peringatan dini, bukan daftar gagal bayar — data kegagalan tidak ada di sumber.';
-  el('tPerhatian').innerHTML = `<thead><tr><th>Merchant</th><th>Ref No</th><th>Status</th><th>Wilayah</th><th class="num">Usia login</th><th class="num">Nilai/bln</th></tr></thead><tbody>` +
-    (perhatian.length ? perhatian.map(r => `<tr>
-      <td class="name" title="${esc(r[i.nama])}">${esc(r[i.nama])}</td>
-      <td class="mono">${r[i.punyaMid] ? esc(r[i.mid]) : '—'}</td>
-      <td><span class="tag">${D.dims.status[r[i.status]]}</span></td>
-      <td>${D.dims.provinsi[r[i.prov]]}</td>
-      <td class="num">${idnum(r[i.loginDays])} hari</td>
-      <td class="num strong">${rp(r[i.gmv] / W)}</td></tr>`).join('')
-      : `<tr><td colspan="6" class="kosong">Tidak ada merchant yang pernah membayar lalu berhenti login pada saringan ini.</td></tr>`) + '</tbody>';
 }
 
 /* ================= RINGKASAN ================= */
-function renderRingkasan({ R1, R2 }) {
+function renderRingkasan({ R1, R2, M }) {
   const i = iR1;
-  const n = jum(R1, i.n), nl = jum(R1, i.nLogin), nl30 = jum(R1, i.nLogin30), nt = jum(R1, i.nTxn);
-  const nl30t = jum(R1, i.nLogin30Txn);
-  const gm = jum(R1, i.gmv), tx = jum(R1, i.txns);
+  const W = D.meta.jendelaTransaksiBulan;
+  const n = jum(R1, i.n), nl = jum(R1, i.nLogin), nl30 = jum(R1, i.nLogin30);
+  const gm = jum(R1, i.gmv);
+  /* GTV memakai predikat yang sama dengan kartu "Nilai transaksi tererekam" di tab
+     Wilayah & kategori, jadi kedua angka itu tidak mungkin berbeda pada saringan yang sama. */
+  const bayar = r => r[iM.punyaTxn] && r[iM.gmv] > 0;
+  const mt = M.filter(bayar);
+  const gtv = mt.reduce((a, r) => a + r[iM.gmv], 0);
+  const und = D.kpi.unduhanTerkini;
   const { idxB, mon2026 } = POKOK();
   const perBulan = kelompok(R1, i.bulan, [i.n, i.nLogin, i.nLogin30, i.nTxn, i.gmv, i.txns]);
   const deret = col => deretBulan(perBulan, idxB, mon2026, col);
-  const rataTxn = mon2026.map(m => { const o = perBulan.get(idxB.get(m)); return o && o[5] ? o[4] / o[5] : null; });
 
   el('scopeNote').textContent = S.bulan === '*' && S.prov === '*'
-    ? `${idnum(n)} merchant pendaftaran 2026 · jendela transaksi ${D.meta.jendelaTransaksiBulan} bulan`
+    ? `${idnum(n)} merchant pendaftaran · ${mon2026.length} bulan terekspor · jendela transaksi ${W} bulan`
     : 'Filter aktif berlaku pada seluruh kartu dan grafik di halaman ini.';
 
   kartu('kpis', [
-    { l: 'Merchant terdaftar', v: idnum(n), n, f: 'id', s: mon2026.length + ' bulan terekspor, ' + mon2026[mon2026.length - 1] + ' baru sampai ' + D.meta.snapshot, tip: 'Ringkasan pendaftaran (mart.agg_daerah).', c: PR },
-    { l: 'Muncul di file aktivitas', v: idnum(nl), n: nl, f: 'id', s: pctS(pc(nl, n)) + ' dari terdaftar — hanya yang muncul di kedua file', spark: spark(deret(1)), tip: 'Bukan tingkat aktivasi: file aktivitas tidak memuat merchant tanpa jejak, jadi sisanya tidak bisa disimpulkan tidak aktif.', c: SC },
-    { l: 'Login ≤ 30 hari', v: idnum(nl30), n: nl30, f: 'id', s: pctS(pc(nl30, n)) + ' dari terdaftar', kelas: 'warn', spark: spark(deret(2), { warna: SD }), tip: 'Usia login terakhir maksimum 30 hari terhadap ' + D.meta.snapshot + '.', c: SD },
-    { l: 'Punya transaksi (kaum terdaftar)', v: idnum(nt), n: nt, f: 'id', s: pctS(pc(nt, n)) + ' dari terdaftar', spark: spark(deret(3)), tip: 'Dari ' + idnum(n) + ' pendaftar; di luar itu ' + idnum(D.tables.m.filter(r => !r[iM.diRegistry]).length) + ' merchant bertransaksi yang tidak ada di file pendaftaran.', c: SU },
-    { l: 'Nilai transaksi kaum terdaftar', v: rp(gm), n: gm, f: 'rp', s: short(gm / D.meta.jendelaTransaksiBulan) + ' / bulan · ' + pctS(pc(gm, jum(D.tables.m, iM.gmv))) + ' dari yang terekam', spark: spark(deret(4)), tip: 'Dasar hitungannya ringkasan pendaftaran: hanya ' + idnum(jum(R1, i.nTxn)) + ' pendaftar yang punya transaksi. Bandingkan dengan kartu "Nilai transaksi tererekam" di tab Transaksi yang memakai seluruh file aktivitas+transaksi.', c: PR },
-    { l: 'Rata-rata per transaksi', v: rp(gm / (tx || 1)), n: gm / (tx || 1), f: 'rp', s: idnum(tx) + ' transaksi', spark: spark(rataTxn), tip: 'Nilai dibagi jumlah transaksi pada rentang filter.', c: SF },
+    { l: 'Merchant terdaftar', v: idnum(n), n, f: 'id',
+      s: pctS(pc(nl, n)) + ' muncul di file aktivitas (' + idnum(nl) + ')',
+      spark: spark(deret(0)),
+      tip: 'Baris hasil ekspor pendaftaran. Bukan tingkat aktivasi: file aktivitas tidak memuat merchant tanpa jejak, jadi sisanya tidak bisa disimpulkan tidak aktif. Bulan terbaru baru sampai ' + D.meta.snapshot + '.', c: PR },
+    { l: 'Aktif 30 hari (MAU)', v: idnum(nl30), n: nl30, f: 'id',
+      s: pctS(pc(nl30, n)) + ' dari terdaftar · login ≤ 30 hari',
+      spark: spark(deret(2), { warna: SD }),
+      tip: 'Usia login terakhir maksimum 30 hari terhadap ' + D.meta.snapshot + '. Basisnya baris pendaftaran; jumlah seluruh merchant beraktivitas ada di tab Aktivitas & corong, jadi kedua angka ini tidak dibandingkan langsung.', c: SD },
+    { l: 'GTV', v: rp(gtv), n: gtv, f: 'rp',
+      s: short(gtv / W) + ' / bulan · ' + idnum(mt.length) + ' merchant bernilai',
+      tip: 'Seluruh file aktivitas + transaksi pada saringan ini, predikatnya sama dengan kartu "Nilai transaksi tererekam" di tab Wilayah & kategori. Dari nilai itu ' + rp(gm) + ' (' + pctS(pc(gm, gtv)) + ') datang dari merchant yang ada di file pendaftaran. Saringan nama hanya membatasi panel di tab itu.', c: SU },
+    { l: 'Unduhan aplikasi', v: und ? idnum(und.jumlah) : '—', n: und ? und.jumlah : undefined, f: 'id',
+      s: und ? 'periode ' + und.periode : 'berkas unduhan belum disertakan',
+      tip: und ? 'Periode terkini dari deret unduhan. Satuannya bisa tanggal (satu hari) atau rentang tanggal, jadi nilainya jangan dibandingkan antar periode.' : 'Belum ada berkas ekspor unduhan pada data ini. Ambil dari Google Sheet lewat tab Mutu data untuk mengisinya.', c: SF },
   ]);
 
-  const vals = deret(0), konv = mon2026.map((m, k) => { const o = perBulan.get(idxB.get(m)); return o && o[0] ? +pc(o[3], o[0]).toFixed(2) : null; });
+  const vals = deret(0), login30 = deret(2);
+  const konv = mon2026.map(mo => { const o = perBulan.get(idxB.get(mo)); return o && o[0] ? +pc(o[3], o[0]).toFixed(2) : null; });
   chart('cCohort', {
     tooltip: { ...TIP, trigger: 'axis', formatter: p => `<b>${p[0].axisValue}</b><br>` + p.map(x => `${x.marker}${x.seriesName}: <b>${x.value == null ? 'tidak ikut terekspor' : (x.seriesName.startsWith('%') ? x.value + '%' : idnum(x.value))}</b>`).join('<br>') },
     legend: LEG, grid: GRID,
@@ -749,32 +739,33 @@ function renderRingkasan({ R1, R2 }) {
       { type: 'value', ...AXIS, splitLine: { show: false }, axisLabel: { ...AXIS.axisLabel, formatter: '{value}%' } }],
     series: [
       { name: 'Terdaftar', type: 'bar', data: vals, barMaxWidth: 40, itemStyle: { color: p => p.value == null ? '#f0f0f0' : { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: '#71dbd3' }, { offset: 1, color: PR }] }, borderRadius: [3, 3, 0, 0] } },
+      { name: 'Login ≤ 30 hari', type: 'line', data: login30, connectNulls: false, symbolSize: 6, lineStyle: { width: 2, color: SD }, itemStyle: { color: SD } },
       { name: '% punya transaksi', type: 'line', yAxisIndex: 1, data: konv, connectNulls: false, symbolSize: 6, lineStyle: { width: 2, color: SU }, itemStyle: { color: SU } }],
   });
-  el('subCohort').textContent = idnum(n) + ' merchant';
+  el('subCohort').textContent = idnum(n) + ' merchant · ' + mon2026.length + ' bulan';
 
-  const tahap = [['Terdaftar (ekspor pendaftaran)', n], ['Muncul di file aktivitas', nl], ['… dan login ≤ 30 hari', nl30], ['… dan transaksi di 30 hari itu', nl30t]];
-  el('hintFunnel').textContent = 'Ekspor ini populasinya beda besar: ' + idnum(n) + ' MID pada file pendaftaran, tetapi file aktivitas hanya memuat ' + idnum(D.tables.m.length) + ' merchant dan ' + idnum(nl) + ' di antaranya pendaftar itu. ' + idnum(D.tables.m.filter(r => !r[iM.diRegistry]).length) + ' merchant beraktivitas justru tidak ada di file pendaftaran, jadi kolom ini menghitung merchant yang ada di kedua file — bukan tingkat aktivasi seluruh pendaftar.';
-  chart('cFunnel', {
-    tooltip: { ...TIP, formatter: p => `${p[1]}<br><b>${idnum(p.value)}</b> · ${pctS(pc(p.value, n))} dari terdaftar` },
-    grid: { ...GRID, top: 8, left: 4, right: 56 },
-    xAxis: { type: 'value', show: false },
-    yAxis: { type: 'category', inverse: true, data: tahap.map(t => t[0]), ...AXIS, splitLine: { show: false }, axisLabel: { ...AXIS.axisLabel, fontSize: 11.5, color: INK2 } },
+  /* Bukan funnel "Draft → Approver → Rejected": kolom tahap/penahap tidak ada di ekspor. */
+  const WARNA_STATUS = { 'Aktif': SU, 'Tidak Aktif': SW, 'Ditutup': INK3, 'Diblokir': SD };
+  const st = kelompok(M, iM.status, [null]);
+  const totS = M.length;
+  el('subStatus').textContent = `${idnum(totS)} merchant beraktivitas · saringan aktif`;
+  el('hintStatus').innerHTML = 'Empat status pencatatan di file sumber — bukan status bertransaksi, dan basisnya merchant yang terekam di file aktivitas (beda dengan kartu "Merchant terdaftar" di atas). Alur <b>Draft → Approver 1 → Approver 2 → Rejected</b> sengaja tidak dibuat — kolom tahap/penahap tidak ada di ekspor (lihat Mutu data · Kelengkapan kolom).';
+  chart('cStatus', {
+    ...ANIM, animationDuration: 800,
+    tooltip: { ...TIP, formatter: p => `<b>${p.name}</b><br>${idnum(p.value)} merchant · ${pctS(pc(p.value, totS))}` },
+    legend: { ...LEG, orient: 'vertical', left: 4, top: 'center', itemGap: 8 },
     series: [{
-      type: 'bar', data: tahap.map((t, k) => ({ value: t[1], itemStyle: { color: [PR, '#5ccfc5', '#a7ece8', SU][k], borderRadius: [0, 3, 3, 0] } })),
-      barWidth: 22, label: { show: true, position: 'right', fontSize: 11, color: INK, formatter: p => `${idnum(p.value)}  ·  ${pctS(pc(p.value, n), 1)}` },
+      type: 'pie', radius: ['50%', '74%'], center: ['70%', '52%'], avoidLabelOverlap: true, label: { show: false }, labelLine: { show: false },
+      itemStyle: { borderColor: '#fff', borderWidth: 2 },
+      data: [...st.entries()].sort((a, b) => b[1][0] - a[1][0]).map(([k, o]) => ({
+        name: D.dims.status[k], value: o[0], itemStyle: { color: WARNA_STATUS[D.dims.status[k]] || PR },
+      })),
     }],
   });
 
-  const st = kelompok(R1, i.status, [i.n]);
-  const shareStatus = nama => pctS(pc((st.get(D.dims.status.indexOf(nama)) || [0])[0], n));
-  el('subStatus').textContent = `${shareStatus('Ditutup')} ditutup · ${shareStatus('Diblokir')} diblokir`;
-  const statusPasangan = urut(st).map(([k, o]) => [D.dims.status[k], o[0]]);
-  barH('cStatus', statusPasangan, { warna: statusPasangan.map(([nama]) => WARNA_STATUS[nama] || PR) });
   const fam = urut(kelompok(R2, iR2.keluarga, [iR2.n]), 0).slice(0, 10);
   barH('cKeluarga', fam.map(([k, o]) => [D.dims.keluarga[k], o[0]]));
 }
-const WARNA_STATUS = { Aktif: PR, Diblokir: SD, Ditutup: '#c6c6c6', 'Tidak Aktif': SW };
 
 function barH(id, pasangan, opsi = {}) {
   const max = Math.max(...pasangan.map(p => p[1]), 1);
@@ -991,11 +982,13 @@ function zumPeta(f) {
 const provCount = g => [...g.keys()].filter(k => D.provGeo[k]).length;
 
 /* ================= AKTIVITAS ================= */
-function renderAktivitas({ R3, R4, M }) {
-  const i = iM;
+function renderAktivitas({ R1, R3, R4, M }) {
+  const i = iM, q = iR1;
+  const W = D.meta.jendelaTransaksiBulan;
   const login = M.filter(r => r[i.punyaLogin]);
   const tot = login.length;
   const b30 = login.filter(r => r[i.loginDays] <= 30).length;
+  const dormant = tot - b30;
   const b180 = login.filter(r => r[i.loginDays] > 180).length;
   const medLogin = med(login.map(r => r[i.loginDays]));
   const bulanSnap = D.meta.snapshot.slice(0, 7);
@@ -1011,11 +1004,27 @@ function renderAktivitas({ R3, R4, M }) {
   kartu('kpisAktiv', [
     { l: 'Merchant beraktivitas', v: idnum(M.length), n: M.length, s: idnum(tot) + ' punya login', spark: spark(deretTerdaftar), tip: 'Deret mini disusun per bulan daftar, bukan antar bulan kalender; tanpa badge karena bulan pendaftaran terbaru belum lengkap.', c: PR },
     { l: 'Login ≤ 30 hari', v: idnum(b30), n: b30, s: pctS(pc(b30, tot)) + ' dari yang punya login', spark: spark(deret30), tip: 'Login terakhirnya maksimal 30 hari sebelum tanggal data — ukuran keterlibatan paling baru.', c: SC },
-    { l: 'Tidak login > 180 hari', v: idnum(b180), n: b180, s: pctS(pc(b180, tot)), kelas: 'warn', tip: 'Kelompok yang paling realistis untuk ditindak.', c: SD },
+    { l: 'Dormant > 30 hari', v: idnum(dormant), n: dormant, s: pctS(pc(dormant, tot)) + ' dari yang punya login · ' + idnum(b180) + ' lewat 180 hari', kelas: 'warn', tip: 'Login terakhirnya sudah lewat 30 hari terhadap ' + D.meta.snapshot + '. Kelompok yang lewat 180 hari paling realistis ditindak lebih dulu.', c: SD },
     { l: 'Nilai tengah usia login', v: medLogin == null ? '—' : idnum(medLogin) + ' hari', n: medLogin, f: 'hari', s: 'setengah merchant di bawahnya', tip: 'Pakai nilai tengah, bukan rata-rata: sebarannya miring ekstrem.', c: SW },
-    { l: 'Punya transaksi', v: idnum(jum(M, i.punyaTxn)), n: jum(M, i.punyaTxn), s: pctS(pc(jum(M, i.punyaTxn), M.length)) + ' dari beraktivitas', tip: 'Merchant dengan minimal satu transaksi bernilai pada jendela tetap 8,77 bulan.', c: SU },
+    { l: 'Punya transaksi', v: idnum(jum(M, i.punyaTxn)), n: jum(M, i.punyaTxn), s: pctS(pc(jum(M, i.punyaTxn), M.length)) + ' dari beraktivitas', tip: 'Merchant dengan minimal satu transaksi bernilai pada jendela tetap ' + W + ' bulan.', c: SU },
     { l: `Transaksi ${bulanSnap}`, v: short(txnNow), n: txnNow, f: 'short', s: 'pada bulan data terakhir', tip: 'Perkiraan dari merchant yang bulan transaksi terakhirnya jatuh di bulan data — bukan tren bulanan sejati (sumber hanya satu angka per merchant).', c: SF },
   ]);
+
+  /* Corong bersarang: tiap tahap adalah subset tahap di atasnya, dihitung dari baris pendaftaran
+     yang sama dengan kartu di tab Ringkasan eksekutif — bukan dari seluruh file aktivitas. */
+  const fN = jum(R1, q.n), fNl = jum(R1, q.nLogin), fN30 = jum(R1, q.nLogin30), fN30T = jum(R1, q.nLogin30Txn);
+  const tahap = [['Terdaftar (ekspor pendaftaran)', fN], ['Muncul di file aktivitas', fNl], ['… dan login ≤ 30 hari', fN30], ['… dan transaksi di 30 hari itu', fN30T]];
+  el('hintFunnel').textContent = 'Ekspor ini populasinya beda besar: ' + idnum(fN) + ' MID pada file pendaftaran, tetapi file aktivitas hanya memuat ' + idnum(M.length) + ' merchant dan ' + idnum(fNl) + ' di antaranya pendaftar itu. ' + idnum(M.filter(r => !r[i.diRegistry]).length) + ' merchant beraktivitas justru tidak ada di file pendaftaran, jadi kolom ini menghitung merchant yang ada di kedua file — bukan tingkat aktivasi seluruh pendaftar.';
+  chart('cFunnel', {
+    tooltip: { ...TIP, formatter: p => `${p[1]}<br><b>${idnum(p.value)}</b> · ${pctS(pc(p.value, fN))} dari terdaftar` },
+    grid: { ...GRID, top: 8, left: 4, right: 56 },
+    xAxis: { type: 'value', show: false },
+    yAxis: { type: 'category', inverse: true, data: tahap.map(t => t[0]), ...AXIS, splitLine: { show: false }, axisLabel: { ...AXIS.axisLabel, fontSize: 11.5, color: INK2 } },
+    series: [{
+      type: 'bar', data: tahap.map((t, k) => ({ value: t[1], itemStyle: { color: [PR, '#5ccfc5', '#a7ece8', SU][k], borderRadius: [0, 3, 3, 0] } })),
+      barWidth: 22, label: { show: true, position: 'right', fontSize: 11, color: INK, formatter: p => `${idnum(p.value)}  ·  ${pctS(pc(p.value, fN), 1)}` },
+    }],
+  });
 
   kontrol('segRecency', [{ v: '7', l: '7 hari' }, { v: '30', l: '30 hari' }, { v: '90', l: '90 hari' }, { v: '365', l: '1 tahun' }], S.rec, v => { S.rec = +v; render(); });
   const lebar = S.rec, batas = lebar * 4;
@@ -1174,6 +1183,21 @@ function renderAktivitas({ R3, R4, M }) {
     yAxis: { type: 'value', ...AXIS, axisLabel: { ...AXIS.axisLabel, formatter: short } },
     series: [{ type: 'bar', data: tms.map(([, k]) => (byTM.get(k) || [0])[0]), barWidth: '82%', itemStyle: { color: p => p.dataIndex === tms.length - 1 ? SU : 'rgba(0,138,0,.32)', borderRadius: [2, 2, 0, 0] } }],
   });
+
+  /* Perlu perhatian: pernah membayar, tapi login-nya sudah lewat 60 hari. Diurut rupiah/bulan. */
+  const poolPrh = M.filter(r => r[i.punyaTxn] && r[i.gmv] > 0 && r[i.loginDays] > 60);
+  const perhatian = poolPrh.slice().sort((a, b) => (b[i.gmv] / W) - (a[i.gmv] / W)).slice(0, 12);
+  el('subPerhatian').textContent = `${idnum(perhatian.length)} dari ${idnum(poolPrh.length)} merchant`;
+  el('hintPerhatian').innerHTML = 'Diuurut dari rupiah per bulan terbesar: merchant yang <b>pernah membayar</b> tapi login-nya sudah <b>lewat 60 hari</b>. Ini peringatan dini, bukan daftar gagal bayar — data kegagalan tidak ada di sumber.';
+  el('tPerhatian').innerHTML = `<thead><tr><th>Merchant</th><th>Ref No</th><th>Status</th><th>Wilayah</th><th class="num">Usia login</th><th class="num">Nilai/bln</th></tr></thead><tbody>` +
+    (perhatian.length ? perhatian.map(r => `<tr>
+      <td class="name" title="${esc(r[i.nama])}">${esc(r[i.nama])}</td>
+      <td class="mono">${r[i.punyaMid] ? esc(r[i.mid]) : '—'}</td>
+      <td><span class="tag">${D.dims.status[r[i.status]]}</span></td>
+      <td>${D.dims.provinsi[r[i.prov]]}</td>
+      <td class="num">${idnum(r[i.loginDays])} hari</td>
+      <td class="num strong">${rp(r[i.gmv] / W)}</td></tr>`).join('')
+      : `<tr><td colspan="6" class="kosong">Tidak ada merchant yang pernah membayar lalu berhenti login pada saringan ini.</td></tr>`) + '</tbody>';
 }
 
 /* ================= TRANSAKSI ================= */
@@ -1194,9 +1218,9 @@ function renderTransaksi({ R2, M }) {
 
   el('scopeTxn').textContent = `${idnum(mt.length)} merchant bernilai transaksi · jendela ${W} bulan${S.cari ? ` · pencarian “${S.cari}” membatasi seluruh panel ini` : ''}`;
   kartu('kpisTxn', [
-    { l: 'Merchant bernilai transaksi', v: idnum(mt.length), n: mt.length, s: pctS(pc(mt.length, M.length)) + ' dari beraktivitas', tip: 'Merchant dengan transaksi bernilai > 0 pada jendela tetap 8,77 bulan.', c: PR },
+    { l: 'Merchant bernilai transaksi', v: idnum(mt.length), n: mt.length, s: pctS(pc(mt.length, M.length)) + ' dari beraktivitas', tip: 'Merchant dengan transaksi bernilai > 0 pada jendela tetap ' + W + ' bulan.', c: PR },
     { l: 'Nilai transaksi tererekam', v: rp(gm), n: gm, f: 'rp', s: W + ' bulan · dari ' + idnum(mt.length) + ' merchant', tip: 'Seluruh file aktivitas + transaksi, bukan hanya pendaftar 2026.', c: SC },
-    { l: 'Laju per bulan', v: rp(gm / W), n: gm / W, f: 'rp', s: 'rata-rata jendela tetap', tip: 'Nilai total dibagi 8,77 bulan (bukan bulan kalender) agar setara antar periode.', c: SU },
+    { l: 'Laju per bulan', v: rp(gm / W), n: gm / W, f: 'rp', s: 'rata-rata jendela tetap', tip: 'Nilai total dibagi ' + W + ' bulan (bukan bulan kalender) agar setara antar periode.', c: SU },
     { l: 'Transaksi', v: idnum(tx), n: tx, s: short(tx / W) + ' / bulan', tip: 'Jumlah transaksi seluruh merchant tersearing pada jendela tetap; angka "per bulan" memakai pembagian yang sama.', c: SF },
     { l: 'Nilai tengah per merchant', v: rp(mGmv), n: mGmv, f: 'rp', s: 'jauh di bawah rata-rata', tip: 'Rata-rata tertarik ke atas oleh segelintir merchant besar.', c: SW },
     { l: '10 merchant terbesar', v: pctS(pc(top10, gm)), s: 'dari seluruh nilai', kelas: 'warn', tip: 'Pangsa nilai yang dikuasai 10 merchant teratas — ukuran konsentrasi, bukan risiko gagal.', c: SD },
@@ -1409,12 +1433,12 @@ function pasangCari() {
     const jenis = b.dataset.t, nama = b.dataset.n;
     sg.classList.remove('on');
     if (jenis === 'Provinsi') { S.prov = nama; el('fProv').value = nama; render(); }
-    else { S.cari = nama; pindahTab('transaksi'); render(); }
+    else { S.cari = nama; pindahTab('wilayah'); render(); }
   };
   q.onkeydown = e => {
     if (e.key === 'Enter') {
       const kueri = q.value.trim();
-      if (kueri.length >= 2) { S.cari = kueri; sg.classList.remove('on'); pindahTab('transaksi'); render(); }
+      if (kueri.length >= 2) { S.cari = kueri; sg.classList.remove('on'); pindahTab('wilayah'); render(); }
     }
   };
   document.addEventListener('click', e => { if (!e.target.closest('.search')) sg.classList.remove('on'); });
@@ -1553,8 +1577,15 @@ async function jalankanSheet() {
     el('btnTambah').disabled = !TAMBAH.antre.length; el('btnSheet').disabled = false;
     return;
   }
-  setLog(hasil.sudahAda ? 'Isi sheet sama dengan yang tersimpan — angka tetap diperiksa ulang…' : 'Berkas unduhan masuk — membangun ulang & memeriksa angka…', 70);
-  sessionStorage.setItem('wondr.hasilBuild', JSON.stringify({ audit: hasil.audit, snapshot: hasil.snapshot, masuk: [{ nama: hasil.berkas, tersimpan: hasil.sudahAda ? null : hasil.berkas }] }));
+  if (hasil.sama) {
+    TAMBAH.sibuk = false;
+    el('btnSheet').disabled = false; el('btnTambah').disabled = !TAMBAH.antre.length;
+    setLog('Tidak ada yang baru di sheet.', null);
+    el('antreanTambah').insertAdjacentHTML('afterbegin', `<div class="row"><span class="k">Sheet memuat ${idnum(hasil.periode)} periode unduhan dan isinya sama persis dengan yang tersimpan — angka tidak dibangun ulang${hasil.snapshot ? ' · data per ' + esc(hasil.snapshot) : ''}</span><span class="val"><span class="tag">tidak ada perubahan</span></span></div>`);
+    return;
+  }
+  setLog('Berkas unduhan masuk — membangun ulang & memeriksa angka…', 70);
+  sessionStorage.setItem('wondr.hasilBuild', JSON.stringify({ audit: hasil.audit, snapshot: hasil.snapshot, masuk: [{ nama: hasil.berkas, tersimpan: hasil.berkas }] }));
   setLog('Selesai — memuat halaman', 100);
   setTimeout(() => location.reload(), 700);
 }
@@ -1632,7 +1663,7 @@ function renderMutu() {
 
   el('mLimits').innerHTML = [
     'Tidak ada baris transaksi individual: tren harian, jam transaksi, ukuran keranjang, dan rasio gagal bayar tidak dapat dihitung.',
-    `Tingkat aktivasi tidak dapat dihitung: ekspor pendaftaran memuat ${idnum(V.barisPendaftaran)} MID, ekspor aktivitas hanya ${idnum((D.tables.m || []).length)} merchant, dan yang ada di keduanya hanya ${idnum(jum(rowsR1(), iR1.nLogin))}. Semua rasio "dari terdaftar" di tab Ringkasan mengukur kelompok itu, bukan perilaku seluruh pendaftar.`,
+    `Tingkat aktivasi tidak dapat dihitung: ekspor pendaftaran memuat ${idnum(V.barisPendaftaran)} MID, ekspor aktivitas hanya ${idnum((D.tables.m || []).length)} merchant, dan yang ada di keduanya hanya ${idnum(jum(rowsR1(), iR1.nLogin))}. Semua rasio "dari terdaftar" di tab Ringkasan eksekutif mengukur kelompok itu, bukan perilaku seluruh pendaftar.`,
     'Tidak ada peristiwa aplikasi: yang terukur hanya usia login terakhir, bukan fitur yang dipakai merchant.',
     'Nilai transaksi satu angka total per merchant pada jendela tetap, sehingga naik-turun antar bulan tidak terlihat.',
     `Bulan ${(D.meta.bulanTanpaPendaftaran || []).join(', ') || '-'} tidak ada barisnya pada ekspor pendaftaran, walaupun file aktivitas memuat merchant yang terdaftar pada bulan itu.`,

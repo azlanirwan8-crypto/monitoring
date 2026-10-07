@@ -150,7 +150,9 @@ async function simpanBerkas(namaAsli, isi) {
 /** Ambil deret unduhan dari Google Sheet (server-side), tulis menimpa satu berkas tetap, lalu bangun.
  *  Sheet = sumber kebenaran seluruh deret, jadi satu berkas ditimpa tiap sinkron (bukan akumulasi
  *  berkas bertanggal yang membuat satu periode terhitung dua kali). Semua angka tetap lewat
- *  gerbang audit di bangun() — hasil BEDA tidak ditayangkan. */
+ *  gerbang audit di bangun() — hasil BEDA tidak ditayangkan.
+ *  Isi dibandingkan byte-per-byte dengan berkas yang tersimpan: kalau sama, build tidak dijalankan
+ *  dan pemanggil diberi tahu bahwa tidak ada yang baru (periode = baris data di sheet). */
 async function tarikSheet() {
   const t = await fetch(SHEET_URL, {
     redirect: 'follow', signal: AbortSignal.timeout(25000), headers: { 'user-agent': 'wondr-dashboard-sync/1.0' },
@@ -163,9 +165,13 @@ async function tarikSheet() {
   if (!/download/i.test(baris[0])) throw new Error('baris pertama bukan ekspor unduhan (tidak ada kolom "Download"): ' + baris[0].slice(0, 120));
   const isi = Buffer.from(baris.join('\r\n') + '\r\n', 'utf8');
   await mkdir(SUMBER, { recursive: true });
-  await writeFile(join(SUMBER, NAMA_UNDUHAN), isi);
+  const tujuan = join(SUMBER, NAMA_UNDUHAN);
+  const periode = baris.length - 1;
+  const lama = existsSync(tujuan) ? await readFile(tujuan) : null;
+  if (lama && lama.equals(isi)) return { berkas: NAMA_UNDUHAN, periode, sama: true, dibangun: false, snapshot: META.snapshot || null };
+  await writeFile(tujuan, isi);
   const hasil = await bangun();
-  return { ...hasil, berkas: NAMA_UNDUHAN, periode: baris.length - 1 };
+  return { ...hasil, berkas: NAMA_UNDUHAN, periode, sama: false, dibangun: true };
 }
 
 const kirim = (res, kode, obj) => { res.writeHead(kode, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(JSON.stringify(obj)); };const bodyMentah = req => new Promise((res, rej) => {

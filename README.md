@@ -88,6 +88,19 @@ scripts/deploy.mjs             salin berkas siap-pakai ke folder lain
 vendor/                        ECharts (MIT), font Saira (OFL), batas wilayah Indonesia (CC BY 4.0)
 ```
 
+## Susunan menu
+
+Satu tab bisa menampung lebih dari satu `<section>`; pemetaannya hanya ada di `GRUP` (`app.js`),
+dan seluruh render fungsi tab itu dijalankan bersamaan — jadi id elemen boleh berpindah bagian
+selama masih dalam grup yang sama.
+
+| Tab | Bagian | Isi |
+|---|---|---|
+| Ringkasan eksekutif | `tab-ringkasan` + `tab-wawasan` | pita pimpinan, 4 kartu teratas, tren daftar/login per bulan, donut status, keluarga kategori — lalu skor kesehatan, Lorenz, empat golongan, unduhan, rekomendasi, kolam winback, hal yang harus disebut di rapat |
+| Aktivitas & corong | `tab-aktivitas` | corong bersarang, usia login & dormant, retensi per kohort, jam, tipe, tabel "perlu perhatian" |
+| Wilayah & kategori | `tab-wilayah` + `tab-transaksi` | peta kuantil, peringkat provinsi/kabupaten, heatmap, lalu konsentrasi nilai dan daftar merchant lengkap |
+| Mutu data | `tab-mutu` | unggah & sinkron Sheet, panel audit, nasib baris, kelengkapan kolom, batas analisis |
+
 ## Yang tidak bisa dihitung dari data ini
 
 Ditampilkan juga di tab Mutu data, supaya tidak ada angka yang terlihat pasti padahal tidak:
@@ -97,6 +110,15 @@ Ditampilkan juga di tab Mutu data, supaya tidak ada angka yang terlihat pasti pa
 - Tren harian, ukuran keranjang, rasio gagal bayar, dan fitur aplikasi yang dipakai — ekspor hanya
   berisi satu angka agregat per merchant pada satu jendela tetap.
 - Perbandingan antar bulan yang adil: bulan terakhir pada ekspor belum penuh.
+- **Success rate dan rasio gagal bayar.** Tidak ada kolom hasil transaksi (berhasil/gagal/kode
+  respons), jadi kegagalan tidak bisa dihitung — kartu "perlu perhatian" yang ada adalah
+  peringatan dini berbasis lama tidak login, bukan daftar gagal.
+- **Rincian metode pembayaran.** Tidak ada kolom metode/produk pembayaran di ketiga ekspor.
+- **Corong pengajuan (Draft → Approver 1 → Approver 2) dan SLA onboarding.** Sumber hanya memuat
+  `Tanggal Daftar` dan satu status akhir; tanpa stempel waktu tiap tahap, lama proses tidak bisa
+  diukur. Butuh ekspor baru berisi `tahap`, `penahap`, `tgl_ajuan`, `tgl_aktif`.
+- **Kontak merchant.** Ekspor tidak memuat telepon/email, jadi dashboard ini tidak bisa dipakai
+  untuk mengirim notifikasi.
 
 ## Privasi
 
