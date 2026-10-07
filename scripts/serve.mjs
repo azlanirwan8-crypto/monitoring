@@ -102,7 +102,7 @@ async function bangun() {
   };
   await tahap('baca ekspor → DuckDB', [join(ENGINE, 'scripts', 'build-db.mjs'), SUMBER, DB]);
   await tahap('DuckDB → angka siap pakai', [join(ENGINE, 'scripts', 'build-data.mjs'), DB]);
-  const audit = await tahap('pemeriksaan 59 angka', [join(ENGINE, '.qoder', 'skills', 'audit-angka', 'scripts', 'audit-angka.mjs'),
+  const audit = await tahap('pemeriksaan 62 angka', [join(ENGINE, '.qoder', 'skills', 'audit-angka', 'scripts', 'audit-angka.mjs'),
     '--db', DB, '--json', join(ENGINE, 'data', 'dash.json'), '--checks', join(ENGINE, 'data', 'db-checks.json')]);
   const ringkas = /(\d+) pemeriksaan · (\d+) OK · (\d+) WASIS · (\d+) BEDA/.exec(audit.keluaran);
   const hasil = ringkas ? { total: +ringkas[1], ok: +ringkas[2], wasis: +ringkas[3], beda: +ringkas[4] } : null;

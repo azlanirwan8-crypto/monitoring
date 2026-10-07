@@ -37,7 +37,7 @@ await writeFile(path.join(TUJUAN, 'README.txt'), [
   '',
   '  Yang dilakukan tombol itu: menyimpan berkas ke ' + meta.sumber + ' (isi yang sama ditolak, jadi',
   '  satu ekspor tidak terhitung dua kali), membangun ulang DuckDB + angka siap pakai, menjalankan',
-  '  59 pemeriksaan angka, dan HANYA menayangkan hasil baru kalau tidak ada yang tidak cocok.',
+  '  62 pemeriksaan angka, dan HANYA menayangkan hasil baru kalau tidak ada yang tidak cocok.',
   '  Alternatif tanpa browser: tumpukkan berkas ke ' + meta.sumber + ' lalu tekan tombol yang sama,',
   '  atau jalankan  npm run sync  dari folder proyek ' + proyek,
   '',

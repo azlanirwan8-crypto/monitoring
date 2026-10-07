@@ -823,7 +823,37 @@ function kelasKuantil(nilai, k = 6) {
   return unik.slice(1).map((hi, x) => ({ gt: x === 0 ? -Infinity : unik[x], lte: hi, i: x }));
 }
 
-function renderWilayah({ R1 }) {
+/* Prioritas tindak per wilayah. Basisnya merchant yang terekam di file aktivitas — bukan seluruh
+   pendaftar — karena pada basis pendaftaran rasionya mentok di ~1% untuk semua provinsi (hanya
+   2.692 dari 269.598 pendaftar yang muncul di file aktivitas), jadi labelnya tidak membedakan apa pun.
+   Ambangnya keputusan tim (ubah di sini): < 30% bertransaksi "Tindak", 30-45% "Pantau", sisanya "Baik".
+   Pada data 7 Okt sebarannya 25,5% (DKI Jakarta) sampai 72,8% (Sulawesi Barat), nasional 43,8%. */
+const AMBANG_WILAYAH = [{ l: 'Tindak', maks: 30, kelas: 'warn' }, { l: 'Pantau', maks: 45, kelas: '' }, { l: 'Baik', maks: Infinity, kelas: 'ok' }];
+
+function prioritasWilayah(M) {
+  const i = iM, W = D.meta.jendelaTransaksiBulan;
+  const bayar = r => r[i.punyaTxn] && r[i.gmv] > 0;
+  const g = new Map();
+  for (const r of M) {
+    let o = g.get(r[i.prov]);
+    if (!o) g.set(r[i.prov], o = [0, 0, 0, 0]);
+    o[0]++;
+    if (r[i.punyaLogin] && r[i.loginDays] <= 30) o[1]++;
+    if (bayar(r)) o[2]++;
+    o[3] += r[i.gmv] || 0;
+  }
+  const baris = [...g.entries()].filter(([, o]) => o[0] > 0).map(([k, o]) => {
+    const pctTxn = pc(o[2], o[0]);
+    return {
+      idx: k, nama: D.dims.provinsi[k], n: o[0], aktif30: o[1], nt: o[2], belum: o[0] - o[2],
+      pctAktif: pc(o[1], o[0]), pctTxn, perBulan: o[3] / W,
+      status: AMBANG_WILAYAH.find(a => pctTxn < a.maks) || AMBANG_WILAYAH[AMBANG_WILAYAH.length - 1],
+    };
+  }).sort((a, b) => a.pctTxn - b.pctTxn || b.belum - a.belum);
+  return { baris, tindak: baris.filter(b => b.status.l === 'Tindak').length };
+}
+
+function renderWilayah({ R1, M }) {
   const i = iR1;
   const kolom = [i.n, i.gmv, i.nTxn, i.nLogin30];
   const byP = kelompok(R1, i.provinsi, kolom);
@@ -930,6 +960,30 @@ function renderWilayah({ R1 }) {
       <td class="num">${pctS(r.share, 1)}</td>
       <td class="num">${r.kini == null ? '—' : idnum(r.kini)}</td>
       <td class="num">${r.kini == null || r.lalu == null || !r.lalu ? '—' : `<span class="delta ${r.kini > r.lalu ? 'up' : r.kini < r.lalu ? 'down' : 'flat'}">${r.kini > r.lalu ? '+' : '−'}${Math.abs(pc(r.kini, r.lalu) - 100).toFixed(0)}%</span>`}</td></tr>`).join('') + '</tbody>';
+
+  /* Prioritas tindak — predikat "bertransaksi" sama dengan kartu & daftar merchant di tab ini. */
+  const pri = prioritasWilayah(M);
+  const a1 = AMBANG_WILAYAH[0], a2 = AMBANG_WILAYAH[1];
+  el('subPrioritas').textContent = `${idnum(pri.tindak)} dari ${idnum(pri.baris.length)} provinsi perlu ditindak`;
+  el('hintPrioritas').innerHTML = `Basisnya ${idnum(M.length)} merchant yang terekam aktivitasnya — bukan seluruh pendaftar, karena pada basis itu rasio semua provinsi mentok di bawah 2% dan labelnya tidak membedakan apa pun. `
+    + `Diurut dari porsi <b>belum bertransaksi</b> terbesar; klik baris untuk menyaring ke provinsi itu. `
+    + `Ambang <b>${a1.l} &lt; ${a1.maks}%</b>, <b>${a2.l} &lt; ${a2.maks}%</b>, sisanya <b>${AMBANG_WILAYAH[2].l}</b> adalah keputusan tim (array AMBANG_WILAYAH), bukan angka dari berkas. `
+    + `Nilai per bulan memakai jendela tetap ${D.meta.jendelaTransaksiBulan} bulan.`;
+  el('tPrioritas').innerHTML = `<thead><tr><th>#</th><th>Provinsi</th><th class="num">Beraktivitas</th><th class="num">Login ≤ 30 hari</th><th class="num">% aktif</th><th class="num">Bertransaksi</th><th class="num">% bertransaksi</th><th class="num">Belum bertransaksi</th><th class="num">Nilai / bulan</th><th>Status</th></tr></thead><tbody>` +
+    pri.baris.map((b, k) => `<tr data-prov="${b.idx}">
+      <td><span class="rk">${k + 1}</span></td><td class="strong">${esc(b.nama)}</td>
+      <td class="num">${idnum(b.n)}</td><td class="num">${idnum(b.aktif30)}</td><td class="num">${pctS(b.pctAktif)}</td>
+      <td class="num">${idnum(b.nt)}</td><td class="num">${pctS(b.pctTxn)}</td>
+      <td class="num strong">${idnum(b.belum)}</td><td class="num">${rp(b.perBulan)}</td>
+      <td><span class="tag ${b.status.kelas}">${b.status.l}</span></td></tr>`).join('') + '</tbody>';
+  el('tPrioritas').onclick = e => {
+    const tr = e.target.closest('tr[data-prov]'); if (!tr) return;
+    const nama = D.dims.provinsi[+tr.dataset.prov];
+    S.prov = S.prov === nama ? '*' : nama;
+    el('fProv').value = S.prov;
+    render();
+  };
+  el('btnCsvWilayah').onclick = () => unduhCsv(`wondr-prioritas-wilayah_${D.meta.snapshot}.csv`, csvWilayah(pri.baris));
 
   const totG = jum(R1, i.gmv);
   const dv = [...byP.entries()].map(([k, o]) => [D.dims.provinsi[k], pc(o[0], totN), pc(o[1], totG)]).sort((a, b) => b[1] - a[1]).slice(0, 22);
@@ -1217,6 +1271,7 @@ function renderTransaksi({ R2, M }) {
   const deretNilai = mon2026.map(mo => { const k = idxB.get(mo); return mt.filter(r => r[i.bulanDaftar] === k).reduce((a, r) => a + r[i.gmv], 0); });
 
   el('scopeTxn').textContent = `${idnum(mt.length)} merchant bernilai transaksi · jendela ${W} bulan${S.cari ? ` · pencarian “${S.cari}” membatasi seluruh panel ini` : ''}`;
+  const pri = prioritasWilayah(M);
   kartu('kpisTxn', [
     { l: 'Merchant bernilai transaksi', v: idnum(mt.length), n: mt.length, s: pctS(pc(mt.length, M.length)) + ' dari beraktivitas', tip: 'Merchant dengan transaksi bernilai > 0 pada jendela tetap ' + W + ' bulan.', c: PR },
     { l: 'Nilai transaksi tererekam', v: rp(gm), n: gm, f: 'rp', s: W + ' bulan · dari ' + idnum(mt.length) + ' merchant', tip: 'Seluruh file aktivitas + transaksi, bukan hanya pendaftar 2026.', c: SC },
@@ -1224,6 +1279,7 @@ function renderTransaksi({ R2, M }) {
     { l: 'Transaksi', v: idnum(tx), n: tx, s: short(tx / W) + ' / bulan', tip: 'Jumlah transaksi seluruh merchant tersearing pada jendela tetap; angka "per bulan" memakai pembagian yang sama.', c: SF },
     { l: 'Nilai tengah per merchant', v: rp(mGmv), n: mGmv, f: 'rp', s: 'jauh di bawah rata-rata', tip: 'Rata-rata tertarik ke atas oleh segelintir merchant besar.', c: SW },
     { l: '10 merchant terbesar', v: pctS(pc(top10, gm)), s: 'dari seluruh nilai', kelas: 'warn', tip: 'Pangsa nilai yang dikuasai 10 merchant teratas — ukuran konsentrasi, bukan risiko gagal.', c: SD },
+    { l: 'Provinsi perlu ditindak', v: idnum(pri.tindak), n: pri.tindak, s: `dari ${idnum(pri.baris.length)} provinsi · di bawah ${AMBANG_WILAYAH[0].maks}% bertransaksi`, kelas: 'warn', tip: 'Basisnya merchant yang terekam aktivitasnya (' + idnum(M.length) + '), bukan seluruh pendaftar — pada basis pendaftaran rasio semua provinsi mentok di bawah 2%. Ambang ' + AMBANG_WILAYAH[0].maks + '% adalah keputusan tim (array AMBANG_WILAYAH di app.js), bukan angka dari berkas. Rinciannya ada di kartu "Prioritas tindak per wilayah" pada tab yang sama.', c: SD },
   ]);
 
   kontrol('segPareto', [{ v: '100', l: '100' }, { v: '200', l: '200' }, { v: '500', l: '500' }, { v: 'all', l: 'Semua' }], S.pareto, v => { S.pareto = v; render(); });
@@ -1360,6 +1416,12 @@ function csvMerchant(rows) {
   const kutip = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
   return '\ufeff' + [KOLOM_CSV.map(k => kutip(k[0])).join(';'),
     ...rows.map(r => KOLOM_CSV.map(([, f]) => kutip(f(r))).join(';'))].join('\r\n');
+}
+function csvWilayah(baris) {
+  const kutip = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const kepala = ['Provinsi', 'Merchant beraktivitas', 'Login <= 30 hari', '% aktif', 'Bertransaksi', '% bertransaksi', 'Belum bertransaksi', 'Nilai per bulan (Rp)', 'Prioritas'];
+  const isi = b => [b.nama, b.n, b.aktif30, +b.pctAktif.toFixed(1), b.nt, +b.pctTxn.toFixed(1), b.belum, Math.round(b.perBulan), b.status.l];
+  return '\ufeff' + [kepala.map(kutip).join(';'), ...baris.map(b => isi(b).map(kutip).join(';'))].join('\r\n');
 }
 function unduhCsv(nama, isi) {
   const a = document.createElement('a'), url = URL.createObjectURL(new Blob([isi], { type: 'text/csv;charset=utf-8' }));

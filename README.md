@@ -63,7 +63,7 @@ beberapa ekspor diselesaikan dengan aturan: ekspor terbaru menang.
 npm run audit
 ```
 
-59 pemeriksaan di tiga kelompok: kontrak numerik payload, hitung ulang lewat SQL ke DuckDB
+62 pemeriksaan di tiga kelompok: kontrak numerik payload, hitung ulang lewat SQL ke DuckDB
 (jalur bebas dari yang dipakai tampilan), dan kebenaran rumus — Gini diuji dengan dua implementasi
 sekaligus dan divalidasi pada data sintetis yang jawabannya diketahui. Keluarannya `OK / WASIS / BEDA`:
 
@@ -98,7 +98,7 @@ selama masih dalam grup yang sama.
 |---|---|---|
 | Ringkasan eksekutif | `tab-ringkasan` + `tab-wawasan` | pita pimpinan, 4 kartu teratas, tren daftar/login per bulan, donut status, keluarga kategori — lalu skor kesehatan, Lorenz, empat golongan, unduhan, rekomendasi, kolam winback, hal yang harus disebut di rapat |
 | Aktivitas & corong | `tab-aktivitas` | corong bersarang, usia login & dormant, retensi per kohort, jam, tipe, tabel "perlu perhatian" |
-| Wilayah & kategori | `tab-wilayah` + `tab-transaksi` | peta kuantil, peringkat provinsi/kabupaten, heatmap, lalu konsentrasi nilai dan daftar merchant lengkap |
+| Wilayah & kategori | `tab-wilayah` + `tab-transaksi` | peta kuantil, **prioritas tindak per wilayah** (label Tindak/Pantau/Baik + unduhan CSV), peringkat provinsi/kabupaten, heatmap, lalu konsentrasi nilai dan daftar merchant lengkap |
 | Mutu data | `tab-mutu` | unggah & sinkron Sheet, panel audit, nasib baris, kelengkapan kolom, batas analisis |
 
 ## Yang tidak bisa dihitung dari data ini

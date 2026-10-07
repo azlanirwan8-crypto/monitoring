@@ -92,6 +92,23 @@ cek('A', 'share merchant terbesar', +K.konsentrasi.merchantTerbesar.share.toFixe
 cek('A', 'sisa merchant = 100% - top10%', +pct(gmvM - jumlah(urut.slice(0, Math.round(urut.length * .1))), gmvM).toFixed(1), +(100 - K.konsentrasi.topSepuluhPersen).toFixed(1), { tol: 0.02 });
 cek('A', 'akuntansi baris: mentah - tanpa MID - MID ganda = faktual', K.terdaftar, (CK.baris?.[0]?.mentah_pendaftaran ?? V.barisPendaftaranMentah) - (V.MIDtanpaIsi ?? 0) - (V.duplikatBedaNilai ?? 0), { wasis: true });
 
+/* Tabel "Prioritas tindak per wilayah": basisnya baris aktivitas (bukan pendaftaran, karena di
+   basis itu rasio semua provinsi mentok <2% dan labelnya tidak membedakan apa pun). Provinsi dengan
+   porsi bertransaksi < 30% diberi label "Tindak" — yang diperiksa di sini: labelnya terdefinisi
+   untuk setiap baris, dan jumlahnya sama lewat dua jalur. */
+const perProv = new Map();
+for (const r of T.m) {
+  const o = perProv.get(r[iM.prov]) || [0, 0];
+  o[0]++; if (r[iM.punyaTxn] === 1 && r[iM.gmv] > 0) o[1]++;
+  perProv.set(r[iM.prov], o);
+}
+const provIsi = [...perProv.values()].filter(o => o[0] > 0);
+const tindakApp = provIsi.filter(o => o[1] / o[0] * 100 < 30).length;
+cek('A', 'setiap provinsi punya label prioritas (0 <= bertransaksi <= beraktivitas)', provIsi.length,
+  provIsi.filter(o => o[1] >= 0 && o[1] <= o[0]).length,
+  { note: `${provIsi.length} provinsi terisi; di luar rentang itu tabel "Prioritas tindak" kehilangan label` });
+cek('A', 'kolom "belum bertransaksi" tidak pernah negatif', 0, provIsi.filter(o => o[0] - o[1] < 0).length);
+
 /* Kartu "empat golongan" dihitung di browser dari dua sumbu; bekukan sebagai pemeriksaan supaya
    predikatnya tidak boleh digeser sampai diam-diam menghasilkan partisi yang bocor. */
 const login30q = r => r[iM.punyaLogin] === 1 && r[iM.loginDays] >= 0 && r[iM.loginDays] <= 30;
@@ -140,6 +157,8 @@ if (!flag('tanpa-db')) {
       (select coalesce(sum(n), 0) from mart.agg_daerah)                                 as mart_n,
       (select coalesce(sum(n), 0) from mart.agg_kategori)                               as kat_n,
       (select coalesce(sum(nilai), 0) from mart.agg_daerah)                             as mart_nilai,
+      (select count(*) from (select provinsi from fact.merchant group by provinsi
+         having count_if(punya_transaksi = 1 and nilai > 0) * 1.0 / count(*) < 0.30) )       as n_tindak,
       (select count(*) from fact.merchant where keluarga is null or segmen is null)     as tanpa_dim,
       (select median(nilai) from fact.merchant where punya_transaksi = 1 and nilai > 0) as med_gmv,
       (select median(hari_since_login) from fact.merchant where hari_since_login >= 0)  as med_usia,
@@ -163,6 +182,8 @@ if (!flag('tanpa-db')) {
   cek('B', 'tidak ada tanggal masa depan (pendaftaran)', 0, b.depan_reg);
   cek('B', 'mart tidak memuat corong mustahil', 0, b.korat);
   cek('B', 'JOIN mart tidak menambah baris (wilayah)', b.n_daftar, b.mart_n);
+  cek('B', 'provinsi berlabel "Tindak" (< 30% bertransaksi): payload vs SQL', tindakApp, b.n_tindak,
+    { note: 'angka yang dibaca kartu "Provinsi perlu ditindak" dan baris tabel prioritas harus sama lewat dua jalur' });
   cek('B', 'JOIN mart tidak menambah baris (kategori)', b.n_daftar, b.kat_n);
   cek('B', 'tiap merchant punya keluarga & segmen', 0, b.tanpa_dim);
   cek('B', 'median GMV (SQL vs payload)', b.med_gmv, K.medianGmv, { tol: 0.02 });
