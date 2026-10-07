@@ -331,15 +331,21 @@ section[hidden] { display: none; }
 /* ---------- kartu metrik ---------- */
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(198px, 1fr)); gap: 12px; margin-bottom: var(--gap); }
 .kpi {
-  position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--line);
+  position: relative; background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--r); box-shadow: var(--shadow); padding: 13px 15px 11px; min-width: 0;
   display: flex; flex-direction: column; gap: 2px;
   transition: box-shadow .22s var(--ease), transform .22s var(--ease), border-color .22s;
 }
 .kpi:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--primary-soft); }
-.kpi::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--c, var(--primary)); opacity: .85; transform: scaleY(.35); transform-origin: top; transition: transform .28s var(--ease); }
+.kpi::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--c, var(--primary)); opacity: .85; border-radius: var(--r) 0 0 var(--r); transform: scaleY(.35); transform-origin: top; transition: transform .28s var(--ease); }
 .kpi:hover::before { transform: scaleY(1); }
 .kpi .l { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3); }
+/* Ikon "(i)": penjelasan cara menghitung dalam bahasa awam, muncul saat hover/fokus. */
+.kpi .info { position: relative; display: inline-grid; place-items: center; width: 14px; height: 14px; margin-left: 5px; border-radius: 50%; background: var(--g200); color: var(--g700); cursor: help; vertical-align: 1px; }
+.kpi .info > i { font-style: italic; font-family: Georgia, "Times New Roman", serif; font-size: 10px; font-weight: 700; line-height: 1; }
+.kpi .info .tipbox { position: absolute; bottom: 150%; left: 50%; transform: translateX(-50%); width: max-content; max-width: 230px; background: var(--g800); color: #fff; font-size: 11px; font-weight: 400; font-style: normal; line-height: 1.4; text-align: left; text-transform: none; letter-spacing: 0; padding: 7px 9px; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.22); opacity: 0; visibility: hidden; transition: opacity .12s var(--ease); z-index: 40; pointer-events: none; }
+.kpi .info:hover .tipbox, .kpi .info:focus .tipbox { opacity: 1; visibility: visible; }
+.kpi .info:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 .kpi .row { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
 .kpi .v { font-size: 25px; font-weight: 600; line-height: 1.15; color: var(--g900); letter-spacing: -.02em; }
 .kpi .s { font-size: 11.6px; color: var(--ink-3); min-height: 17px; }

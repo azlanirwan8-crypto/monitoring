@@ -325,8 +325,8 @@ function kontrol(nodeId, opsi, aktif, pilih) {
 }
 
 function kartu(nodeId, daftar) {
-  el(nodeId).innerHTML = daftar.map(k => `<div class="kpi ${k.kelas || ''}" title="${k.tip || ''}" style="--c:${k.c || 'var(--primary)'}">
-    <div class="l">${k.l}</div>
+  el(nodeId).innerHTML = daftar.map(k => `<div class="kpi ${k.kelas || ''}" style="--c:${k.c || 'var(--primary)'}">
+    <div class="l">${k.l}${k.tip ? `<span class="info" tabindex="0" role="note" aria-label="Cara menghitung"><i>i</i><span class="tipbox">${k.tip}</span></span>` : ''}</div>
     <div class="row"><div class="v" ${k.n != null ? `data-num="${k.n}" data-fmt="${k.f || 'id'}"` : ''}>${k.v}</div>${k.spark || ''}</div>
     <div class="s">${k.s || ''} ${k.delta || ''}</div></div>`).join('');
   hiturNaik(el(nodeId));
@@ -681,6 +681,39 @@ function renderWawasan({ R1, M }) {
     { k: 'warn', t: `MPAN rusak di sumber: ${idnum(V.mpanNotasiIlmiah || 0)} baris tersimpan sebagai notasi ilmiah. Semua penggabungan memakai MID, dan ${idnum(V.MIDberulang)} baris MID berulang diselesaikan dengan aturan ekspor terbaru menang — ${idnum(V.duplikatBedaNilai || 0)} di antaranya membawa atribut yang berbeda.` },
     { k: 'info', t: `${idnum(V.userAktifSatu || 0)} merchant melaporkan 1 user aktif, sehingga “jumlah user” tidak berguna sebagai ukuran keterlibatan.` },
   ].map(x => `<div class="row" style="grid-template-columns:auto"><span class="k"><span class="callout ${x.k}" style="border:0;background:none;padding:0"><svg viewBox="0 0 24 24"><path d="M12 8v5m0 3.2v.1M10.3 3.9 2.8 17.4A1.9 1.9 0 0 0 4.5 20.3h15a1.9 1.9 0 0 0 1.7-2.9L13.7 3.9a1.9 1.9 0 0 0-3.4 0Z"/></svg><span>${x.t}</span></span></span></div>`).join('');
+
+  /* --- 8. distribusi status NYATA --- kolom tahap/approver tidak ada di sumber, jadi ini bukan
+     funnel "Draft→Approver→Rejected", melainkan komposisi 4 status akhir yang benar-benar terisi. */
+  const WARNA_STATUS = { 'Aktif': SU, 'Tidak Aktif': SW, 'Ditutup': INK3, 'Diblokir': SD };
+  const byStatus = [...kelompok(M, i.status, [null]).entries()].sort((a, b) => b[1][0] - a[1][0]);
+  const totS = M.length;
+  chart('cStatus', {
+    ...ANIM, animationDuration: 800,
+    tooltip: { ...TIP, formatter: p => `<b>${p.name}</b><br>${idnum(p.value)} merchant · ${pctS(pc(p.value, totS))}` },
+    legend: { ...LEG, orient: 'vertical', left: 4, top: 'center', itemGap: 8 },
+    series: [{
+      type: 'pie', radius: ['50%', '74%'], center: ['70%', '52%'], avoidLabelOverlap: true, label: { show: false }, labelLine: { show: false },
+      itemStyle: { borderColor: '#fff', borderWidth: 2 },
+      data: byStatus.map(([k, o]) => ({ name: D.dims.status[k], value: o[0], itemStyle: { color: WARNA_STATUS[D.dims.status[k]] || PR } })),
+    }],
+  });
+  el('subStatus').textContent = `${idnum(M.length)} merchant · saringan aktif`;
+  el('hintStatus').innerHTML = 'Empat status akhir dari file sumber. Alur <b>Draft → Approver 1 → Approver 2 → Rejected</b> sengaja tidak dibuat — kolom tahap/penahap tidak ada di ekspor (lihat Mutu data · Kelengkapan kolom).';
+
+  /* --- 9. Merchant perlu perhatian: pernah membayar, tapi login-nya sudah lama. Urut rupiah. */
+  const poolPrh = M.filter(r => r[i.punyaTxn] && r[i.gmv] > 0 && r[i.loginDays] > 60);
+  const perhatian = poolPrh.slice().sort((a, b) => (b[i.gmv] / W) - (a[i.gmv] / W)).slice(0, 12);
+  el('subPerhatian').textContent = `${idnum(perhatian.length)} dari ${idnum(poolPrh.length)} merchant`;
+  el('hintPerhatian').innerHTML = 'Diuurut dari rupiah per bulan terbesar: merchant yang <b>pernah membayar</b> tapi login-nya sudah <b>lewat 60 hari</b>. Ini peringatan dini, bukan daftar gagal bayar — data kegagalan tidak ada di sumber.';
+  el('tPerhatian').innerHTML = `<thead><tr><th>Merchant</th><th>Ref No</th><th>Status</th><th>Wilayah</th><th class="num">Usia login</th><th class="num">Nilai/bln</th></tr></thead><tbody>` +
+    (perhatian.length ? perhatian.map(r => `<tr>
+      <td class="name" title="${esc(r[i.nama])}">${esc(r[i.nama])}</td>
+      <td class="mono">${r[i.punyaMid] ? esc(r[i.mid]) : '—'}</td>
+      <td><span class="tag">${D.dims.status[r[i.status]]}</span></td>
+      <td>${D.dims.provinsi[r[i.prov]]}</td>
+      <td class="num">${idnum(r[i.loginDays])} hari</td>
+      <td class="num strong">${rp(r[i.gmv] / W)}</td></tr>`).join('')
+      : `<tr><td colspan="6" class="kosong">Tidak ada merchant yang pernah membayar lalu berhenti login pada saringan ini.</td></tr>`) + '</tbody>';
 }
 
 /* ================= RINGKASAN ================= */
@@ -977,11 +1010,11 @@ function renderAktivitas({ R3, R4, M }) {
 
   kartu('kpisAktiv', [
     { l: 'Merchant beraktivitas', v: idnum(M.length), n: M.length, s: idnum(tot) + ' punya login', spark: spark(deretTerdaftar), tip: 'Deret mini disusun per bulan daftar, bukan antar bulan kalender; tanpa badge karena bulan pendaftaran terbaru belum lengkap.', c: PR },
-    { l: 'Login ≤ 30 hari', v: idnum(b30), n: b30, s: pctS(pc(b30, tot)) + ' dari yang punya login', spark: spark(deret30), c: SC },
+    { l: 'Login ≤ 30 hari', v: idnum(b30), n: b30, s: pctS(pc(b30, tot)) + ' dari yang punya login', spark: spark(deret30), tip: 'Login terakhirnya maksimal 30 hari sebelum tanggal data — ukuran keterlibatan paling baru.', c: SC },
     { l: 'Tidak login > 180 hari', v: idnum(b180), n: b180, s: pctS(pc(b180, tot)), kelas: 'warn', tip: 'Kelompok yang paling realistis untuk ditindak.', c: SD },
     { l: 'Nilai tengah usia login', v: medLogin == null ? '—' : idnum(medLogin) + ' hari', n: medLogin, f: 'hari', s: 'setengah merchant di bawahnya', tip: 'Pakai nilai tengah, bukan rata-rata: sebarannya miring ekstrem.', c: SW },
-    { l: 'Punya transaksi', v: idnum(jum(M, i.punyaTxn)), n: jum(M, i.punyaTxn), s: pctS(pc(jum(M, i.punyaTxn), M.length)) + ' dari beraktivitas', c: SU },
-    { l: `Transaksi ${bulanSnap}`, v: short(txnNow), n: txnNow, f: 'short', s: 'pada bulan data terakhir', c: SF },
+    { l: 'Punya transaksi', v: idnum(jum(M, i.punyaTxn)), n: jum(M, i.punyaTxn), s: pctS(pc(jum(M, i.punyaTxn), M.length)) + ' dari beraktivitas', tip: 'Merchant dengan minimal satu transaksi bernilai pada jendela tetap 8,77 bulan.', c: SU },
+    { l: `Transaksi ${bulanSnap}`, v: short(txnNow), n: txnNow, f: 'short', s: 'pada bulan data terakhir', tip: 'Perkiraan dari merchant yang bulan transaksi terakhirnya jatuh di bulan data — bukan tren bulanan sejati (sumber hanya satu angka per merchant).', c: SF },
   ]);
 
   kontrol('segRecency', [{ v: '7', l: '7 hari' }, { v: '30', l: '30 hari' }, { v: '90', l: '90 hari' }, { v: '365', l: '1 tahun' }], S.rec, v => { S.rec = +v; render(); });
@@ -1161,12 +1194,12 @@ function renderTransaksi({ R2, M }) {
 
   el('scopeTxn').textContent = `${idnum(mt.length)} merchant bernilai transaksi · jendela ${W} bulan${S.cari ? ` · pencarian “${S.cari}” membatasi seluruh panel ini` : ''}`;
   kartu('kpisTxn', [
-    { l: 'Merchant bernilai transaksi', v: idnum(mt.length), n: mt.length, s: pctS(pc(mt.length, M.length)) + ' dari beraktivitas', c: PR },
+    { l: 'Merchant bernilai transaksi', v: idnum(mt.length), n: mt.length, s: pctS(pc(mt.length, M.length)) + ' dari beraktivitas', tip: 'Merchant dengan transaksi bernilai > 0 pada jendela tetap 8,77 bulan.', c: PR },
     { l: 'Nilai transaksi tererekam', v: rp(gm), n: gm, f: 'rp', s: W + ' bulan · dari ' + idnum(mt.length) + ' merchant', tip: 'Seluruh file aktivitas + transaksi, bukan hanya pendaftar 2026.', c: SC },
-    { l: 'Laju per bulan', v: rp(gm / W), n: gm / W, f: 'rp', s: 'rata-rata jendela tetap', c: SU },
-    { l: 'Transaksi', v: idnum(tx), n: tx, s: short(tx / W) + ' / bulan', c: SF },
+    { l: 'Laju per bulan', v: rp(gm / W), n: gm / W, f: 'rp', s: 'rata-rata jendela tetap', tip: 'Nilai total dibagi 8,77 bulan (bukan bulan kalender) agar setara antar periode.', c: SU },
+    { l: 'Transaksi', v: idnum(tx), n: tx, s: short(tx / W) + ' / bulan', tip: 'Jumlah transaksi seluruh merchant tersearing pada jendela tetap; angka "per bulan" memakai pembagian yang sama.', c: SF },
     { l: 'Nilai tengah per merchant', v: rp(mGmv), n: mGmv, f: 'rp', s: 'jauh di bawah rata-rata', tip: 'Rata-rata tertarik ke atas oleh segelintir merchant besar.', c: SW },
-    { l: '10 merchant terbesar', v: pctS(pc(top10, gm)), s: 'dari seluruh nilai', kelas: 'warn', c: SD },
+    { l: '10 merchant terbesar', v: pctS(pc(top10, gm)), s: 'dari seluruh nilai', kelas: 'warn', tip: 'Pangsa nilai yang dikuasai 10 merchant teratas — ukuran konsentrasi, bukan risiko gagal.', c: SD },
   ]);
 
   kontrol('segPareto', [{ v: '100', l: '100' }, { v: '200', l: '200' }, { v: '500', l: '500' }, { v: 'all', l: 'Semua' }], S.pareto, v => { S.pareto = v; render(); });
