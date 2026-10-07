@@ -201,6 +201,15 @@ async function init() {
   el('snap').textContent = D.meta.snapshot;
   el('snapSide').textContent = D.meta.snapshot;
   el('penandaContoh').hidden = !/CONTOH/.test(String(D.meta.catatan || ''));
+  // Badge asal data jadi pintasan ke tab Mutu data (riwayat + panel audit), dengan tooltip kapan terakhir sinkron.
+  const pill = el('pillSumber');
+  if (pill) {
+    const sinkron = D.meta.dibuatPada ? new Date(D.meta.dibuatPada).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : 'tidak diketahui';
+    pill.title = `Sinkron terakhir: ${sinkron} · klik untuk melihat asal & riwayat data`;
+    const ke = () => pindahTab('mutu');
+    pill.addEventListener('click', ke);
+    pill.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ke(); } });
+  }
   isiFilter();
   pasangEvent();
   pasangTambah();

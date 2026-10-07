@@ -236,7 +236,9 @@ select:focus-visible, .btn:focus-visible, button:focus-visible { outline: 2px so
 .chip button { border: 0; background: none; color: inherit; cursor: pointer; padding: 0; line-height: 1; font-size: 13px; opacity: .7; }
 .chip button:hover { opacity: 1; }
 .tb-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-.snap-pill { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--ink-3); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 4px 11px; }
+.snap-pill { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--ink-3); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 4px 11px; cursor: pointer; transition: border-color .15s var(--ease), box-shadow .15s var(--ease); }
+.snap-pill:hover { border-color: var(--primary); }
+.snap-pill:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .snap-pill b { color: var(--g700); font-weight: 600; }
 /* Angka di halaman ini karangan kalau payload yang tampil adalah data contoh. */
 .snap-pill .pill-contoh { color: var(--warning-text); background: rgba(255, 133, 0, .14); border-radius: var(--r-pill); padding: 2px 8px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; }
@@ -258,7 +260,7 @@ select:focus-visible, .btn:focus-visible, button:focus-visible { outline: 2px so
 .progres i { display: block; height: 100%; width: 0; background: var(--primary); transition: width .4s var(--ease); }
 
 /* ---------- isi ---------- */
-main { flex: 1 1 auto; padding: 18px 22px 8px; max-width: 1780px; width: 100%; }
+main { flex: 1 1 auto; padding: 18px 22px 8px; max-width: 1440px; width: 100%; margin-inline: auto; }
 .page-head { display: flex; align-items: flex-end; gap: 14px; margin-bottom: 14px; }
 .page-head h2 { font-size: 19px; color: var(--g800); }
 .page-head .sub { font-size: 12.5px; color: var(--ink-3); margin-bottom: 2px; }
@@ -287,9 +289,9 @@ section[hidden] { display: none; }
 .card.accent { border-top: 3px solid var(--primary); }
 .card .strip { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
 
-.chart { width: 100%; height: 292px; }
-.chart.tall { height: 540px; }
-.chart.map { height: 470px; }
+.chart { width: 100%; height: 292px; max-height: 320px; }
+.chart.tall { height: 540px; max-height: none; }
+.chart.map { height: 470px; max-height: none; }
 .chart.sm { height: 212px; }
 .chart.xs { height: 140px; }
 
